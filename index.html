@@ -466,60 +466,84 @@ function printNote(id){
   const list=noteExps(id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const kms=noteKms(id);
   let tHT=0,tTVA=0,tTTC=0,tTiers=0;
-  const rows=list.map(e=>{const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);
-    tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;
-    const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
-    return `<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td>
-      <td class="num">${num2(ht)}</td><td class="num">${num2(tva)}</td><td class="num">${num2(ttc)}</td>
-      <td class="num">${(Number(e.tiers)||0)?num2(e.tiers):"0,00"}</td></tr>`;}).join("");
-  const blanks=Math.max(0,6-list.length);let blankRows="";
-  for(let b=0;b<blanks;b++)blankRows+=`<tr><td>&nbsp;</td><td></td><td></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td></tr>`;
+  list.forEach(e=>{const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;});
   const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
-  const veh=kms[0]?`${esc(kms[0].marque||n.vehMarque||"")}${(kms[0].cv||n.vehCV)?" — "+esc(kms[0].cv||n.vehCV)+" CV":""}`:(n.vehMarque?esc(n.vehMarque):"");
-  const kmRows=kms.map(k=>`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td>
-    <td class="num">${num2(k.nbkm)}</td><td class="num">${num2(k.taux||i.ik)}</td><td class="num">${num2(kmTotal(k))}</td></tr>`).join("");
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
-  const cats=CATS.map(c=>`<div class="cat"><span class="ps-box">${n.categorie===c?"✕":""}</span>${c}</div>`).join("");
-  const hasCap=list.some(isCapped);
+  const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
+  const taux=kms[0]?num2(kms[0].taux||i.ik):num2(i.ik);
+  const ROWS=Math.max(16,list.length,kms.length+2);
 
-  const inner=`<div class="ps-wrap">
-    <div class="ps-top">
-      <div class="lt"><div class="brand">TWINJET — PERSONNEL NAVIGANT</div><div class="sub">NOTE DE FRAIS</div></div>
-      <div class="ps-id">
-        <div class="c"><div class="k">Nom</div><div class="vv">${esc(i.nom)}</div></div>
-        <div class="c"><div class="k">Trigrame</div><div class="vv">${esc(i.trigramme)}</div></div>
-        <div class="c"><div class="k">Fonction</div><div class="vv">${esc(i.fonction)}</div></div>
+  let fr="";
+  for(let r=0;r<ROWS;r++){const e=list[r];
+    if(e){const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);
+      const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
+      fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td class="lib">${lib}</td>`+
+          `<td class="num">${num2(ht)}</td><td class="num">${num2(tva)}</td><td class="num">${num2(ttc)}</td>`+
+          `<td class="num">${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
+    } else fr+=`<tr><td></td><td></td><td class="lib"></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td></tr>`;
+  }
+  let km="";const KROWS=ROWS-2;
+  for(let r=0;r<KROWS;r++){const k=kms[r];
+    if(k)km+=`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td><td class="num">${num2(k.nbkm)}</td><td class="num">${num2(kmTotal(k))}</td></tr>`;
+    else km+=`<tr><td></td><td></td><td class="num"></td><td class="num"></td></tr>`;
+  }
+  km+=`<tr class="ktot"><td colspan="3">TOTAL FRAIS KM</td><td class="num">${num2(tKM)}</td></tr>`;
+  km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="num">${num2(tTTC)}</td></tr>`;
+
+  const cat=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>${c}`;
+
+  const inner=`<div class="tj">
+    <div class="spine"><span>TWINJET&nbsp;&nbsp;&nbsp;PERSONNEL NAVIGANT</span></div>
+    <div class="main">
+      <div class="idrow">
+        <div class="c"><span class="k">NOM</span> ${esc(i.nom)}</div>
+        <div class="c"><span class="k">Trigrame</span> ${esc(i.trigramme)}</div>
+        <div class="c"><span class="k">Fonction</span> ${esc(i.fonction)}</div>
+      </div>
+      <div class="catrow">
+        <div class="cats">
+          <div>${cat("Ligne")}</div><div>${cat("Charter")}</div><div>${cat("Evasan")}</div><div>${cat("MEP")}</div>
+          <div>${cat("Commercial")}</div><div>${cat("Audit")}</div><div>${cat("Training/Formation")}</div><div>${cat("Administratif")}</div>
+        </div>
+        <div class="eq"><span class="k">Equipage :</span> ${esc(n.equipage||i.trigramme)}</div>
+      </div>
+      <div class="objrow">
+        <div class="ol">
+          <div class="objet"><span class="k">Objet :</span> ${esc(n.objet||"")}</div>
+          <div class="dev">Devises et taux de conversion</div>
+        </div>
+        <div class="or">
+          <div class="veh"><span class="k">Véhicule : Marque CV</span><br>${veh}</div>
+          <div class="ik"><span class="k">Taux IK €</span><br>${taux}</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="left">
+          <div class="fraisband">FRAIS</div>
+          <table class="fr">
+            <thead><tr><th>Date</th><th>Fournisseur</th><th>Libellé</th><th class="num">HT</th><th class="num">TVA</th><th class="num">TTC</th><th class="num">DONT TIERS</th></tr></thead>
+            <tbody>${fr}</tbody>
+          </table>
+        </div>
+        <div class="right">
+          <table class="km">
+            <thead><tr><th>Départ</th><th>Arrivée</th><th class="num">NB KM</th><th class="num">Total €</th></tr></thead>
+            <tbody>${km}</tbody>
+          </table>
+        </div>
+      </div>
+      <div class="footrow">
+        <div class="fleft">
+          <div class="fcell"><span class="k">Observation</span></div>
+          <div class="fcell"><span class="k">Contrôle et validation</span></div>
+          <div class="fcell"><span class="k">Paiement</span></div>
+        </div>
+        <div class="gen"><div class="k">TOTAL GENERAL</div><div class="genv">${num2(tTTC+tKM)} €</div></div>
       </div>
     </div>
-    <div class="ps-cats">${cats}</div>
-    <div class="ps-objet">
-      <div class="o"><div class="k">Objet</div>${esc(n.objet||"")}</div>
-      <div class="o" style="max-width:30%"><div class="k">Equipage</div>${esc(n.equipage||i.trigramme)}</div>
-      <div class="e"><div class="k">Période</div>${periode}</div>
-    </div>
-    <table class="ps">
-      <thead><tr><th>Date</th><th>Fournisseur</th><th>Libellé</th>
-      <th class="num">HT</th><th class="num">TVA</th><th class="num">TTC</th><th class="num">Dont tiers</th></tr></thead>
-      <tbody>${rows}${blankRows}</tbody>
-      <tfoot><tr><td colspan="3">TOTAL FRAIS</td><td class="num">${num2(tHT)}</td><td class="num">${num2(tTVA)}</td>
-      <td class="num">${num2(tTTC)}</td><td class="num">${num2(tTiers)}</td></tr></tfoot>
-    </table>
-    ${kms.length?`<div class="ps-km-h">Frais kilométriques — Véhicule : ${veh||"—"}</div>
-    <table class="ps"><thead><tr><th>Départ</th><th>Arrivée</th><th class="num">NB KM</th><th class="num">Taux IK €</th><th class="num">Total €</th></tr></thead>
-    <tbody>${kmRows}</tbody></table>`:""}
-    <div class="ps-tot">
-      <div class="t"><span class="l">Total frais TTC</span><span class="v">${num2(tTTC)}</span></div>
-      <div class="t"><span class="l">Total frais km</span><span class="v">${num2(tKM)}</span></div>
-      <div class="t"><span class="l">Total général €</span><span class="v">${num2(tTTC+tKM)}</span></div>
-    </div>
-    <div class="ps-foot">
-      <div class="f"><div class="k">Observation</div></div>
-      <div class="f"><div class="k">Contrôle et validation</div></div>
-      <div class="f"><div class="k">Paiement</div></div>
-    </div>
-    ${hasCap?`<div style="font-size:8.5px;color:#666;padding:4px 9px">Repas plafonnés à ${eur(i.cap)}/couvert (politique Twin Jet) ; dépassement à charge de l'agent.</div>`:""}
   </div>
-  <div class="ps-ref">NOTE FRAIS V1 PN COMPTA 020524VB — ${esc(i.nom)} · ${periode}</div>`;
+  <div class="ref">NOTE FRAIS V1 PN COMPTA 020524VB — ${esc(i.nom)} · ${periode}</div>`;
+
   const slug=(n.titre||n.vol||n.libelle||"note").toString().replace(/[^0-9A-Za-zÀ-ÿ]+/g,"_").slice(0,40);
   const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.html`;
   openOrDownload(inner,fname);
@@ -528,48 +552,73 @@ function printNote(id){
 function pdfCSS(){return `
   *{box-sizing:border-box}
   body{margin:0;background:#525659;color:#000;font-family:-apple-system,system-ui,Arial,sans-serif;font-size:11px}
-  .bar{position:sticky;top:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
-    background:#0b2545;color:#fff;padding:12px 16px;z-index:10}
-  .bar button{background:#f5a524;color:#1a1306;border:none;border-radius:9px;font-weight:700;
-    font-size:15px;padding:11px 16px;cursor:pointer;font-family:inherit}
+  .bar{position:sticky;top:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#0b2545;color:#fff;padding:12px 16px;z-index:10}
+  .bar button{background:#f5a524;color:#1a1306;border:none;border-radius:9px;font-weight:700;font-size:15px;padding:11px 16px;cursor:pointer;font-family:inherit}
   .bar span{font-size:12px;opacity:.85}
-  .page{background:#fff;max-width:800px;margin:16px auto;padding:14px}
-  .ps-wrap{border:1.5px solid #000}
-  .ps-top{display:flex;border-bottom:1.5px solid #000}
-  .ps-top .lt{flex:1;padding:7px 9px;border-right:1.5px solid #000}
-  .ps-top .brand{font-weight:700;font-size:14px;letter-spacing:.5px}
-  .ps-top .sub{font-size:9px;letter-spacing:2px;color:#333}
-  .ps-id{display:flex}
-  .ps-id .c{padding:6px 9px;border-right:1px solid #000;min-width:90px}
-  .ps-id .c:last-child{border-right:none}
-  .ps-id .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
-  .ps-id .vv{font-weight:600;font-size:12px}
-  .ps-cats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1.5px solid #000}
-  .ps-cats .cat{padding:5px 8px;border-right:1px solid #000;display:flex;align-items:center;gap:6px;font-size:10px}
-  .ps-cats .cat:nth-child(4n){border-right:none}
-  .ps-cats .cat:nth-child(-n+4){border-bottom:1px solid #000}
-  .ps-box{width:12px;height:12px;border:1.2px solid #000;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;line-height:1}
-  .ps-objet{display:flex;border-bottom:1.5px solid #000}
-  .ps-objet .o{flex:1;padding:5px 9px;border-right:1px solid #000}
-  .ps-objet .e{padding:5px 9px;min-width:120px}
-  .ps-objet .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
-  table.ps{width:100%;border-collapse:collapse}
-  table.ps th{background:#eef1f5;border-bottom:1px solid #000;border-right:1px solid #ccc;padding:5px 6px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;text-align:left}
-  table.ps th.num,table.ps td.num{text-align:right;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
-  table.ps td{border-bottom:1px solid #ddd;border-right:1px solid #eee;padding:5px 6px;vertical-align:top;font-size:10.5px}
-  table.ps tfoot td{border-top:1.5px solid #000;border-bottom:none;font-weight:700;background:#f6f7f9}
-  .ps-km-h{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#555;padding:6px 9px 2px}
-  .ps-tot{display:flex;border-top:1.5px solid #000}
-  .ps-tot .t{flex:1;padding:7px 9px;border-right:1px solid #000;display:flex;justify-content:space-between}
-  .ps-tot .t:last-child{border-right:none;background:#eef1f5}
-  .ps-tot .l{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#444}
-  .ps-tot .v{font-family:ui-monospace,Menlo,monospace;font-weight:700}
-  .ps-foot{display:flex;border-top:1.5px solid #000;min-height:50px}
-  .ps-foot .f{flex:1;padding:6px 9px;border-right:1px solid #000}
-  .ps-foot .f:last-child{border-right:none}
-  .ps-foot .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
-  .ps-ref{font-size:8px;color:#888;text-align:right;padding:4px 2px 0;font-family:ui-monospace,Menlo,monospace}
-  @media print{.bar{display:none}.page{margin:0;padding:0;max-width:none}body{background:#fff}@page{size:A4 portrait;margin:10mm}}
+  .page{background:#fff;max-width:1120px;margin:16px auto;padding:10px}
+  .tj{display:flex;border:2px solid #000}
+  .spine{position:relative;width:44px;border-right:2px solid #000}
+  .spine span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;font-weight:800;font-style:italic;font-size:19px;letter-spacing:1px}
+  .main{flex:1;min-width:0}
+  .k{font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#444}
+  .idrow{display:flex;border-bottom:2px solid #000}
+  .idrow .c{padding:5px 9px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:13px}
+  .idrow .c:first-child{flex:1.3}
+  .idrow .c:nth-child(2){flex:1;text-align:center}
+  .idrow .c:last-child{flex:1.3;text-align:center;border-right:none}
+  .idrow .k{font-style:normal;display:inline-block;margin-right:4px;vertical-align:1px}
+  .catrow{display:flex;border-bottom:2px solid #000}
+  .cats{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start}
+  .cats>div{flex:0 0 25%;display:flex;align-items:center;gap:5px;padding:5px 9px;border-right:1px solid #000;border-bottom:1px solid #000;font-weight:700;font-size:11px}
+  .cats>div:nth-child(4n){border-right:none}
+  .cats>div:nth-child(n+5){border-bottom:none}
+  .cb{width:13px;height:13px;border:1.4px solid #000;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;flex:none}
+  .eq{flex:0 0 210px;border-left:2px solid #000;padding:6px 9px;font-weight:700}
+  .objrow{display:flex;border-bottom:2px solid #000}
+  .ol{flex:0 0 64%;display:flex}
+  .ol .objet{flex:0 0 34%;padding:5px 9px;border-right:1px solid #000;font-weight:700;font-style:italic;text-decoration:underline}
+  .ol .objet .k{text-decoration:none;font-style:normal}
+  .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:10px}
+  .or{flex:1;display:flex;border-left:2px solid #000}
+  .or .veh{flex:1;padding:4px 9px;border-right:1px solid #000;font-style:italic}
+  .or .ik{flex:0 0 92px;padding:4px 9px;font-style:italic}
+  .body{display:flex}
+  .left{flex:0 0 64%;border-right:2px solid #000}
+  .fraisband{background:#f4b870;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
+  table{width:100%;border-collapse:collapse;table-layout:fixed}
+  table.fr th,table.fr td{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 5px;height:22px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  table.fr th{background:#f4b870;font-style:italic;font-size:10px;height:26px}
+  table.fr td{background:#fbdcb9}
+  table.fr th:last-child,table.fr td:last-child{border-right:none}
+  table.fr th:nth-child(1),table.fr td:nth-child(1){width:11%}
+  table.fr th:nth-child(2),table.fr td:nth-child(2){width:18%}
+  table.fr th:nth-child(3),table.fr td:nth-child(3){width:31%}
+  table.fr th:nth-child(4),table.fr td:nth-child(4){width:9%}
+  table.fr th:nth-child(5),table.fr td:nth-child(5){width:9%}
+  table.fr th:nth-child(6),table.fr td:nth-child(6){width:9%}
+  table.fr th:nth-child(7),table.fr td:nth-child(7){width:13%}
+  .num{text-align:right;font-variant-numeric:tabular-nums}
+  .right{flex:1}
+  table.km th,table.km td{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 5px;height:22px;overflow:hidden;white-space:nowrap}
+  table.km th{background:#bdbdbd;font-style:italic;font-size:10px;height:44px;vertical-align:middle}
+  table.km td{background:#d9d9d9}
+  table.km th:last-child,table.km td:last-child{border-right:none}
+  table.km th:nth-child(1),table.km td:nth-child(1){width:30%}
+  table.km th:nth-child(2),table.km td:nth-child(2){width:30%}
+  table.km th:nth-child(3),table.km td:nth-child(3){width:18%}
+  table.km th:nth-child(4),table.km td:nth-child(4){width:22%}
+  table.km .ktot td{background:#bdbdbd;font-weight:700;text-align:left}
+  table.km .ktot td.num,table.km .ttot td.num{text-align:right}
+  table.km .ttot td{background:#f4b870;font-weight:700;text-align:left}
+  .footrow{display:flex;border-top:2px solid #000}
+  .fleft{flex:0 0 64%;display:flex;border-right:2px solid #000}
+  .fleft .fcell{flex:1;border-right:1px solid #000;padding:5px 9px;min-height:50px;font-style:italic}
+  .fleft .fcell:last-child{border-right:none}
+  .gen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+  .gen .k{font-weight:700;font-size:13px;color:#000}
+  .gen .genv{font-weight:700;font-size:16px;font-family:ui-monospace,Menlo,monospace}
+  .ref{font-size:8px;color:#555;padding:5px 2px 0;font-family:ui-monospace,Menlo,monospace}
+  @media print{.bar{display:none}.page{margin:0;padding:0;max-width:none}body{background:#fff}@page{size:A4 landscape;margin:8mm}}
 `;}
 
 function openOrDownload(inner,fname){
