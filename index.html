@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>NDF · Twin Jet</title>
+<!-- 100% hors ligne : aucune dépendance réseau. Polices système en repli. -->
+<meta name="theme-color" content="#0e1116">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="NDF">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --ink:#0e1116; --panel:#161b22; --panel2:#1c232c; --line:#262d37;
+    --txt:#e6edf3; --muted:#8b98a5; --amber:#f5a524; --cyan:#38bdf8;
+    --green:#34d399; --red:#f87171; --navy:#0b2545;
+    --r:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{background:var(--ink);color:var(--txt);font-family:'IBM Plex Sans',system-ui,sans-serif;
+    font-size:16px;line-height:1.45;padding-bottom:env(safe-area-inset-bottom)}
+  .mono{font-family:'IBM Plex Mono',monospace}
+  .app{max-width:560px;margin:0 auto;padding:16px 14px 120px}
+
+  header{display:flex;justify-content:space-between;align-items:flex-end;
+    border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px}
+  .brand{font-size:24px;font-weight:700;letter-spacing:-.4px}
+  .brand b{color:var(--amber)}
+  .tag{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted)}
+  .idbox{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.5}
+  .idbox span{color:var(--cyan)}
+  .gear{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px}
+  h2.section{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted);
+    text-transform:uppercase;margin:22px 2px 10px}
+
+  .strip{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+    padding:13px 14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;
+    transition:border-color .15s,transform .05s}
+  .strip:active{transform:scale(.992)} .strip:hover{border-color:#33404e}
+  .strip .accent{position:absolute;left:0;top:10px;bottom:10px;width:4px;border-radius:4px;background:var(--amber)}
+  .strip.ligne .accent{background:var(--cyan)}
+  .strip .body{flex:1;min-width:0;padding-left:6px}
+  .strip .top{display:flex;align-items:baseline;gap:8px}
+  .strip .vol{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px}
+  .strip .kind{font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--ink);
+    background:var(--amber);padding:1px 6px;border-radius:4px}
+  .strip.ligne .kind{background:var(--cyan)}
+  .strip .sub{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .strip .amt{text-align:right}
+  .strip .amt .e{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px}
+  .strip .amt .n{font-size:11px;color:var(--muted)}
+  .empty{color:var(--muted);font-size:14px;text-align:center;padding:30px 10px;border:1px dashed var(--line);border-radius:var(--r)}
+
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;
+    font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;padding:13px 16px;cursor:pointer;width:100%}
+  .btn.amber{background:var(--amber);color:#1a1306}
+  .btn.cyan{background:var(--cyan);color:#06222e}
+  .btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
+  .btn.red{background:transparent;color:var(--red);border:1px solid #3a2326}
+  .btn:active{filter:brightness(.95)}
+  .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));
+    max-width:532px;width:calc(100% - 28px);z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.5)}
+
+  .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+  .sheet{background:var(--panel);width:100%;max-width:560px;border-radius:18px 18px 0 0;border-top:1px solid var(--line);
+    max-height:92vh;overflow:auto;padding:8px 16px 24px;animation:rise .18s ease}
+  @keyframes rise{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+  .grab{width:38px;height:4px;background:#39424d;border-radius:3px;margin:8px auto 14px}
+  .sheet h3{margin:2px 0 16px;font-size:19px}
+  label.f{display:block;font-size:12px;color:var(--muted);margin:14px 0 5px;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px}
+  input,select{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;color:var(--txt);
+    font-family:inherit;font-size:16px;padding:12px}
+  input:focus,select:focus{outline:none;border-color:var(--amber)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .seg button{flex:1;min-width:64px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);
+    border-radius:9px;padding:10px 6px;font-family:'IBM Plex Mono',monospace;font-size:12.5px;cursor:pointer}
+  .seg button.on{background:var(--amber);color:#1a1306;border-color:var(--amber);font-weight:600}
+  .toggle{display:flex;gap:8px;margin-top:6px}
+  .toggle button{flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:10px;
+    padding:12px;font-size:14px;font-weight:600;cursor:pointer}
+  .toggle button.on{background:#2a2410;border-color:var(--amber);color:var(--amber)}
+  .warn{font-size:12.5px;color:var(--amber);background:#241c08;border:1px solid #3a2e0c;border-radius:9px;padding:9px 11px;margin-top:10px}
+  .actions{display:flex;gap:10px;margin-top:20px}
+  .actions .btn{flex:1}
+
+  .exp{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:11px;
+    padding:11px 12px;margin-bottom:8px;cursor:pointer}
+  .exp .d{flex:1;min-width:0}
+  .exp .d .t{font-size:14.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .exp .d .m{font-size:12px;color:var(--muted);margin-top:1px}
+  .exp .v{font-family:'IBM Plex Mono',monospace;font-weight:600;text-align:right;white-space:nowrap}
+  .exp .v .cap{display:block;font-size:11px;color:var(--amber)}
+  .exp .v s{color:var(--muted);font-weight:400}
+  .pill{display:inline-block;font-size:10px;font-family:'IBM Plex Mono',monospace;padding:1px 5px;border-radius:4px;
+    background:#23300f;color:var(--green);margin-left:6px}
+  .pill.t{background:#0f2733;color:var(--cyan)}
+  .totbar{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:14px 0 6px}
+  .totbar .ln{display:flex;justify-content:space-between;align-items:center}
+  .totbar .ln+.ln{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+  .totbar .l{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--muted);letter-spacing:1px}
+  .totbar .v{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600}
+  .totbar .v.big{font-size:22px;color:var(--amber)}
+  .backbtn{background:none;border:none;color:var(--cyan);font-size:14px;cursor:pointer;padding:4px 0;margin-bottom:6px;font-family:'IBM Plex Mono',monospace}
+
+  /* ---------- PRINT (calque formulaire officiel) ---------- */
+  .print-sheet{display:none}
+  @media print{
+    body{background:#fff}
+    .app,.fab,.scrim{display:none !important}
+    .print-sheet{display:block}
+    @page{size:A4 portrait;margin:10mm}
+  }
+  .print-sheet{color:#000;background:#fff;font-family:'IBM Plex Sans',Arial,sans-serif;font-size:11px}
+  .ps-wrap{border:1.5px solid #000}
+  .ps-top{display:flex;border-bottom:1.5px solid #000}
+  .ps-top .lt{flex:1;padding:7px 9px;border-right:1.5px solid #000}
+  .ps-top .brand{font-weight:700;font-size:14px;letter-spacing:.5px}
+  .ps-top .sub{font-size:9px;letter-spacing:2px;color:#333}
+  .ps-id{display:flex}
+  .ps-id .c{padding:6px 9px;border-right:1px solid #000;min-width:90px}
+  .ps-id .c:last-child{border-right:none}
+  .ps-id .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  .ps-id .vv{font-weight:600;font-size:12px}
+  .ps-cats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1.5px solid #000}
+  .ps-cats .cat{padding:5px 8px;border-right:1px solid #000;display:flex;align-items:center;gap:6px;font-size:10px}
+  .ps-cats .cat:nth-child(4n){border-right:none}
+  .ps-cats .cat:nth-child(-n+4){border-bottom:1px solid #000}
+  .ps-box{width:12px;height:12px;border:1.2px solid #000;display:inline-flex;align-items:center;justify-content:center;
+    font-size:11px;font-weight:700;line-height:1}
+  .ps-objet{display:flex;border-bottom:1.5px solid #000}
+  .ps-objet .o{flex:1;padding:5px 9px;border-right:1px solid #000}
+  .ps-objet .e{padding:5px 9px;min-width:120px}
+  .ps-objet .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  table.ps{width:100%;border-collapse:collapse}
+  table.ps th{background:#eef1f5;border-bottom:1px solid #000;border-right:1px solid #ccc;padding:5px 6px;font-size:9px;
+    text-transform:uppercase;letter-spacing:.4px;text-align:left}
+  table.ps th.num,table.ps td.num{text-align:right;font-family:'IBM Plex Mono',monospace;white-space:nowrap}
+  table.ps td{border-bottom:1px solid #ddd;border-right:1px solid #eee;padding:5px 6px;vertical-align:top;font-size:10.5px}
+  table.ps tfoot td{border-top:1.5px solid #000;border-bottom:none;font-weight:700;background:#f6f7f9}
+  .ps-km-h{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#555;padding:6px 9px 2px}
+  .ps-tot{display:flex;border-top:1.5px solid #000}
+  .ps-tot .t{flex:1;padding:7px 9px;border-right:1px solid #000;display:flex;justify-content:space-between}
+  .ps-tot .t:last-child{border-right:none;background:#eef1f5}
+  .ps-tot .l{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#444}
+  .ps-tot .v{font-family:'IBM Plex Mono',monospace;font-weight:700}
+  .ps-foot{display:flex;border-top:1.5px solid #000;min-height:50px}
+  .ps-foot .f{flex:1;padding:6px 9px;border-right:1px solid #000}
+  .ps-foot .f:last-child{border-right:none}
+  .ps-foot .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  .ps-ref{font-size:8px;color:#888;text-align:right;padding:4px 2px 0;font-family:'IBM Plex Mono',monospace}
+</style>
+</head>
+<body>
+<div class="app" id="app"></div>
+<div class="print-sheet" id="printSheet"></div>
+
+<script>
+/* ===== Constantes ===== */
+const CAP_DEFAULT=21.50;
+const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
+const TVA_PRESETS=[20,10,5.5,2.1,0];
+const IK_DEFAULT=0.636;
+
+let state={
+  id:{nom:"BLOUDEAU Loris",fonction:"CDB",trigramme:"BLC",base:"LFLL",cap:CAP_DEFAULT,ik:IK_DEFAULT},
+  notes:[], exps:[], kms:[]
+};
+let view={page:"home",noteId:null};
+
+const uid=()=>Math.random().toString(36).slice(2,10);
+const eur=n=>(n==null||isNaN(n)?"—":Number(n).toFixed(2).replace(".",",")+" €");
+const num2=n=>Number(n||0).toFixed(2).replace(".",",");
+const todayStr=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;};
+const monthNow=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
+const monthLabel=m=>{if(!m)return"";const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});};
+
+/* ===== Stockage : window.storage si dispo (dans Claude), sinon localStorage (hors ligne) ===== */
+const Store={
+  async get(){
+    try{ if(window.storage){const a=await window.storage.get("ndf_state");return a&&a.value?a.value:null;} }catch(e){}
+    try{ return localStorage.getItem("ndf_state"); }catch(e){}
+    return null;
+  },
+  async set(v){
+    try{ if(window.storage){await window.storage.set("ndf_state",v);return;} }catch(e){}
+    try{ localStorage.setItem("ndf_state",v); }catch(e){}
+  }
+};
+async function load(){
+  try{const raw=await Store.get();
+    if(raw){const s=JSON.parse(raw);state={...state,...s,id:{...state.id,...(s.id||{})}};state.kms=state.kms||[];}
+  }catch(e){}
+}
+async function save(){try{await Store.set(JSON.stringify(state));}catch(e){console.warn(e);}}
+
+/* ===== Sauvegarde / restauration ===== */
+function exportData(){
+  try{
+    const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;a.download="ndf-backup-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+  }catch(e){alert("Export impossible dans cet aperçu — ouvre l'app dans ton navigateur.");}
+}
+function importData(input){
+  const f=input.files&&input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const s=JSON.parse(r.result);
+      if(!s||typeof s!=="object"||!Array.isArray(s.notes))throw 0;
+      if(!confirm("Remplacer toutes les donnees actuelles par la sauvegarde importee ?"))return;
+      state={...state,...s,id:{...state.id,...(s.id||{})}};
+      state.notes=s.notes||[];state.exps=s.exps||[];state.kms=s.kms||[];
+      save();closeModal();render();alert("Sauvegarde importee.");
+    }catch(e){alert("Fichier invalide.");}
+  };
+  r.readAsText(f);
+}
+
+/* ===== Calculs ===== */
+function effTTC(e){const ttc=Number(e.ttc)||0;
+  if(e.repas){const cap=(state.id.cap||CAP_DEFAULT)*(Number(e.couverts)||1);return Math.min(ttc,cap);}return ttc;}
+function isCapped(e){return e.repas&&(Number(e.ttc)||0)>(state.id.cap||CAP_DEFAULT)*(Number(e.couverts)||1);}
+function noteExps(id){return state.exps.filter(e=>e.noteId===id);}
+function noteKms(id){return state.kms.filter(k=>k.noteId===id);}
+function kmTotal(k){return (Number(k.nbkm)||0)*(Number(k.taux)||state.id.ik||IK_DEFAULT);}
+function totTTC(id){return noteExps(id).reduce((s,e)=>s+effTTC(e),0);}
+function totKM(id){return noteKms(id).reduce((s,k)=>s+kmTotal(k),0);}
+function totGen(id){return totTTC(id)+totKM(id);}
+function splitHT(ttc,tva){const ht=ttc/(1+(Number(tva)||0)/100);return{ht,tva:ttc-ht};}
+
+const app=document.getElementById("app");
+function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ===== Home ===== */
+function render(){
+  if(view.page==="detail"){renderDetail();return;}
+  const m=state.notes.filter(n=>n.type==="mission").sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const l=state.notes.filter(n=>n.type==="ligne").sort((a,b)=>(b.mois||"").localeCompare(a.mois||""));
+  app.innerHTML=`
+    <header>
+      <div><div class="tag">TWIN JET / NOTE DE FRAIS</div><div class="brand">NDF<b>·</b>CARNET</div></div>
+      <div style="display:flex;align-items:flex-end;gap:10px">
+        <div class="idbox">${esc(state.id.trigramme)} · <span>${esc(state.id.fonction)}</span><br>${esc(state.id.base)}</div>
+        <button class="gear" onclick="openId()">⚙︎</button>
+      </div>
+    </header>
+    <h2 class="section">Notes par mission / vol</h2>
+    ${m.length?m.map(stripHTML).join(""):`<div class="empty">Aucune note de mission.<br>Crée une note pour un vol (ex. T7&nbsp;7612).</div>`}
+    <h2 class="section">Notes mensuelles · ligne régulière</h2>
+    ${l.length?l.map(stripHTML).join(""):`<div class="empty">Aucune note mensuelle.</div>`}
+    <button class="btn amber fab" onclick="openNote()">+ Nouvelle note</button>`;
+}
+function stripHTML(n){
+  const t=totGen(n.id),c=noteExps(n.id).length+noteKms(n.id).length;
+  const cls=n.type==="ligne"?"strip ligne":"strip";
+  const head=n.titre||(n.type==="mission"?(n.vol||"Vol"):(n.libelle||"Ligne"));
+  const kind=n.type==="mission"?"MISSION":"MENSUEL";
+  const sub=n.type==="mission"?`${esc(n.date||"")} · ${esc(n.categorie||"")}`:`${esc(monthLabel(n.mois))} · ${esc(n.categorie||"")}`;
+  return `<div class="${cls}" onclick="openDetail('${n.id}')"><span class="accent"></span>
+    <div class="body"><div class="top"><span class="vol">${esc(head)}</span><span class="kind">${kind}</span></div>
+    <div class="sub">${sub}</div></div>
+    <div class="amt"><div class="e">${eur(t)}</div><div class="n">${c} ligne${c>1?"s":""}</div></div></div>`;
+}
+
+/* ===== Detail ===== */
+function renderDetail(){
+  const n=state.notes.find(x=>x.id===view.noteId);
+  if(!n){return goHome();}
+  const list=noteExps(n.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const kms=noteKms(n.id);
+  const head=n.titre||(n.type==="mission"?(n.vol||"Vol"):(n.libelle||"Ligne"));
+  const sub=n.type==="mission"?`${esc(n.date||"")} · ${esc(n.categorie||"")}`:`${esc(monthLabel(n.mois))} · ${esc(n.categorie||"")}`;
+  const km=totKM(n.id);
+  app.innerHTML=`
+    <button class="backbtn" onclick="goHome()">‹ Carnet</button>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+      <div><div style="font-size:22px;font-weight:700">${esc(head)}</div>
+      <div style="color:var(--muted);font-size:13px">${sub}</div></div>
+      <button class="gear" onclick="openNote('${n.id}')">✎</button>
+    </div>
+    <h2 class="section">Frais</h2>
+    ${list.length?list.map(expHTML).join(""):`<div class="empty">Aucune dépense. Ajoute ton premier ticket.</div>`}
+    ${kms.length?`<h2 class="section">Indemnités km</h2>`+kms.map(kmHTML).join(""):""}
+    <div class="totbar">
+      <div class="ln"><span class="l">FRAIS TTC</span><span class="v">${eur(totTTC(n.id))}</span></div>
+      ${km>0?`<div class="ln"><span class="l">FRAIS KM</span><span class="v">${eur(km)}</span></div>`:""}
+      <div class="ln"><span class="l">TOTAL GÉNÉRAL</span><span class="v big">${eur(totGen(n.id))}</span></div>
+    </div>
+    <div class="actions">
+      <button class="btn ghost" onclick="openExp()">+ Dépense</button>
+      <button class="btn ghost" onclick="openKm()">+ Km</button>
+    </div>
+    <button class="btn amber" style="margin-top:10px" onclick="printNote('${n.id}')">⎙ Générer le PDF</button>
+    <button class="btn red" style="margin-top:10px" onclick="delNote('${n.id}')">Supprimer la note</button>`;
+}
+function expHTML(e){
+  const capped=isCapped(e);
+  const tags=(e.repas?`<span class="pill">REPAS ×${e.couverts||1}</span>`:"")+((Number(e.tiers)||0)>0?`<span class="pill t">TIERS ${num2(e.tiers)}</span>`:"");
+  return `<div class="exp" onclick="openExp('${e.id}')"><div class="d">
+    <div class="t">${esc(e.fournisseur||"—")} ${tags}</div>
+    <div class="m">${esc(e.date||"")} · ${esc(e.libelle||"")} · TVA ${String(e.tva).replace(".",",")}%</div></div>
+    <div class="v">${eur(effTTC(e))}${capped?`<span class="cap">plafonné · <s>${eur(e.ttc)}</s></span>`:""}</div></div>`;
+}
+function kmHTML(k){
+  return `<div class="exp" onclick="openKm('${k.id}')"><div class="d">
+    <div class="t">${esc(k.depart||"")} → ${esc(k.arrivee||"")}</div>
+    <div class="m">${num2(k.nbkm)} km · ${num2(k.taux||state.id.ik)} €/km</div></div>
+    <div class="v">${eur(kmTotal(k))}</div></div>`;
+}
+
+function goHome(){view={page:"home",noteId:null};render();}
+function openDetail(id){view={page:"detail",noteId:id};render();}
+
+/* ===== Modales ===== */
+function modal(html){const s=document.createElement("div");s.className="scrim";
+  s.onclick=e=>{if(e.target===s)s.remove();};
+  s.innerHTML=`<div class="sheet"><div class="grab"></div>${html}</div>`;document.body.appendChild(s);return s;}
+function closeModal(){const s=document.querySelector(".scrim");if(s)s.remove();}
+const val=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
+const fnum=id=>parseFloat((val(id)||"0").replace(",","."))||0;
+
+/* ---- Identité ---- */
+function openId(){const i=state.id;
+  modal(`<h3>Identité & réglages</h3>
+    <label class="f">Nom Prénom</label><input id="i_nom" value="${esc(i.nom)}">
+    <div class="row2"><div><label class="f">Fonction</label><input id="i_fct" value="${esc(i.fonction)}"></div>
+    <div><label class="f">Trigramme</label><input id="i_tri" value="${esc(i.trigramme)}"></div></div>
+    <div class="row2"><div><label class="f">Base</label><input id="i_base" value="${esc(i.base)}"></div>
+    <div><label class="f">Plafond repas €/couvert</label><input id="i_cap" inputmode="decimal" value="${i.cap}"></div></div>
+    <label class="f">Taux IK par défaut €/km</label><input id="i_ik" inputmode="decimal" value="${i.ik}">
+    <label class="f">Sauvegarde des données</label>
+    <div class="actions" style="margin-top:0">
+      <button class="btn ghost" onclick="exportData()">Exporter (.json)</button>
+      <label class="btn ghost" style="cursor:pointer">Importer<input type="file" accept="application/json,.json" style="display:none" onchange="importData(this)"></label>
+    </div>
+    <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
+    <button class="btn amber" onclick="saveId()">Enregistrer</button></div>`);}
+function saveId(){state.id.nom=val("i_nom");state.id.fonction=val("i_fct");state.id.trigramme=val("i_tri");
+  state.id.base=val("i_base");state.id.cap=fnum("i_cap")||CAP_DEFAULT;state.id.ik=fnum("i_ik")||IK_DEFAULT;
+  save();closeModal();render();}
+
+/* ---- Note ---- */
+let noteDraftType="mission",catPick="Ligne";
+function openNote(id){
+  const n=id?state.notes.find(x=>x.id===id):null;
+  noteDraftType=n?n.type:"mission";catPick=n?.categorie||"Ligne";
+  modal(`<h3>${n?"Modifier la note":"Nouvelle note"}</h3>
+    <div class="toggle" id="ntype">
+      <button class="${noteDraftType==='mission'?'on':''}" onclick="setNoteType('mission')">Mission / vol</button>
+      <button class="${noteDraftType==='ligne'?'on':''}" onclick="setNoteType('ligne')">Mensuel · ligne</button></div>
+    <label class="f">Titre de la note</label><input id="n_titre" placeholder="Ce que tu veux : Vol LYS–STR, Journaux + repas…" value="${esc(n?.titre||"")}">
+    <div id="nfields"></div>
+    <label class="f">Catégorie</label>
+    <div class="seg" id="n_cat">${CATS.map(c=>`<button class="${catPick===c?'on':''}" onclick="pickCat(this,'${esc(c)}')">${c}</button>`).join("")}</div>
+    <label class="f">Equipage</label><input id="n_eq" placeholder="${esc(state.id.trigramme)}" value="${esc(n?.equipage||state.id.trigramme)}">
+    <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
+    <button class="btn amber" onclick="saveNote('${id||""}')">${n?"Enregistrer":"Créer la note"}</button></div>`);
+  renderNoteFields(n);
+}
+function setNoteType(t){noteDraftType=t;
+  document.querySelectorAll("#ntype button").forEach((b,i)=>b.classList.toggle("on",(i===0)===(t==="mission")));
+  renderNoteFields(null);}
+function renderNoteFields(n){const box=document.getElementById("nfields");
+  if(noteDraftType==="mission"){box.innerHTML=`
+    <label class="f">N° de vol / mission</label><input id="n_vol" placeholder="T7 7612" value="${esc(n?.vol||"")}">
+    <label class="f">Date</label><input id="n_date" placeholder="JJ/MM/AA" value="${esc(n?.date||todayStr())}">`;
+  }else{box.innerHTML=`
+    <label class="f">Libellé de la ligne</label><input id="n_lib" placeholder="Ligne LYS–STR" value="${esc(n?.libelle||"")}">
+    <label class="f">Mois</label><input id="n_mois" type="month" value="${esc(n?.mois||monthNow())}">
+    <label class="f">N° de ligne (optionnel)</label><input id="n_vol" placeholder="T7 76xx" value="${esc(n?.vol||"")}">`;}
+}
+function pickCat(btn,c){catPick=c;btn.parentNode.querySelectorAll("button").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
+function saveNote(id){
+  const titre=val("n_titre");
+  const common={categorie:catPick,titre:titre,objet:titre,equipage:val("n_eq")||state.id.trigramme};
+  let o;
+  if(noteDraftType==="mission") o={type:"mission",vol:val("n_vol")||"Vol",date:val("n_date"),...common};
+  else o={type:"ligne",libelle:val("n_lib")||"Ligne",mois:document.getElementById("n_mois").value,vol:val("n_vol"),...common};
+  if(id){Object.assign(state.notes.find(x=>x.id===id),o);}
+  else{const nid=uid();state.notes.push({id:nid,...o});view={page:"detail",noteId:nid};}
+  save();closeModal();render();
+}
+function delNote(id){if(!confirm("Supprimer cette note, ses dépenses et ses km ?"))return;
+  state.notes=state.notes.filter(n=>n.id!==id);state.exps=state.exps.filter(e=>e.noteId!==id);
+  state.kms=state.kms.filter(k=>k.noteId!==id);save();goHome();}
+
+/* ---- Dépense ---- */
+let expRepas=false,expTva=20;
+function openExp(id){
+  const e=id?state.exps.find(x=>x.id===id):null;
+  expRepas=e?!!e.repas:false;expTva=e?e.tva:20;
+  modal(`<h3>${e?"Modifier la dépense":"Nouvelle dépense"}</h3>
+    <div class="row2"><div><label class="f">Date</label><input id="e_date" placeholder="JJ/MM/AA" value="${esc(e?.date||todayStr())}"></div>
+    <div><label class="f">Montant TTC €</label><input id="e_ttc" inputmode="decimal" placeholder="0,00" value="${e?String(e.ttc).replace('.',','):""}"></div></div>
+    <label class="f">Fournisseur</label><input id="e_four" placeholder="Lagardère, Total, La Poste…" value="${esc(e?.fournisseur||"")}">
+    <label class="f">Libellé</label><input id="e_lib" placeholder="Repas équipage, journaux…" value="${esc(e?.libelle||"")}">
+    <label class="f">Type</label>
+    <div class="toggle" id="e_type">
+      <button class="${!expRepas?'on':''}" onclick="setRepas(false)">Standard</button>
+      <button class="${expRepas?'on':''}" onclick="setRepas(true)">🍽 Repas (plafonné)</button></div>
+    <div id="e_repasbox"></div>
+    <div class="row2"><div><label class="f">TVA %</label>
+      <select id="e_tva">${TVA_PRESETS.map(t=>`<option value="${t}" ${expTva==t?'selected':''}>${String(t).replace('.',',')} %</option>`).join("")}</select></div>
+    <div><label class="f">Dont tiers €</label><input id="e_tiers" inputmode="decimal" placeholder="0,00" value="${e&&e.tiers?String(e.tiers).replace('.',','):""}"></div></div>
+    <div id="e_warn"></div>
+    <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
+    <button class="btn amber" onclick="saveExp('${id||""}')">Enregistrer</button></div>
+    ${e?`<button class="btn red" style="margin-top:10px" onclick="delExp('${id}')">Supprimer</button>`:""}`);
+  renderRepasBox(e);updateWarn();
+  document.getElementById("e_ttc").addEventListener("input",updateWarn);
+}
+function setRepas(v){expRepas=v;
+  document.querySelectorAll("#e_type button").forEach((b,i)=>b.classList.toggle("on",(i===1)===v));
+  if(v)document.getElementById("e_tva").value=10;
+  renderRepasBox(null);updateWarn();}
+function renderRepasBox(e){const box=document.getElementById("e_repasbox");
+  box.innerHTML=expRepas?`<label class="f">Nombre de couverts</label><input id="e_couv" inputmode="numeric" value="${e?.couverts||1}" oninput="updateWarn()">`:"";}
+function updateWarn(){const w=document.getElementById("e_warn");if(!w)return;
+  const ttc=fnum("e_ttc");
+  if(expRepas){const couv=parseInt((document.getElementById("e_couv")?.value)||"1")||1;
+    const cap=(state.id.cap||CAP_DEFAULT)*couv;
+    if(ttc>cap){w.innerHTML=`<div class="warn">Plafond ${eur(cap)} (${couv}×${eur(state.id.cap)}). Remboursé ${eur(cap)}, reste ${eur(ttc-cap)} à ta charge.</div>`;return;}}
+  w.innerHTML="";}
+function saveExp(id){
+  const o={noteId:view.noteId,date:val("e_date"),ttc:fnum("e_ttc"),fournisseur:val("e_four"),libelle:val("e_lib"),
+    tva:parseFloat(document.getElementById("e_tva").value),repas:expRepas,
+    couverts:expRepas?(parseInt(document.getElementById("e_couv").value)||1):1,tiers:fnum("e_tiers")};
+  if(id)Object.assign(state.exps.find(x=>x.id===id),o);else state.exps.push({id:uid(),...o});
+  save();closeModal();render();}
+function delExp(id){state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();}
+
+/* ---- Km ---- */
+function openKm(id){
+  const k=id?state.kms.find(x=>x.id===id):null;const n=state.notes.find(x=>x.id===view.noteId);
+  modal(`<h3>${k?"Modifier l'indemnité km":"Indemnité kilométrique"}</h3>
+    <div class="row2"><div><label class="f">Véhicule (marque)</label><input id="k_marque" value="${esc(k?.marque||n?.vehMarque||"")}"></div>
+    <div><label class="f">CV fiscaux</label><input id="k_cv" inputmode="numeric" value="${esc(k?.cv||n?.vehCV||"")}"></div></div>
+    <div class="row2"><div><label class="f">Départ</label><input id="k_dep" value="${esc(k?.depart||state.id.base)}"></div>
+    <div><label class="f">Arrivée</label><input id="k_arr" value="${esc(k?.arrivee||"")}"></div></div>
+    <div class="row2"><div><label class="f">Nb km</label><input id="k_km" inputmode="decimal" value="${k?String(k.nbkm).replace('.',','):""}"></div>
+    <div><label class="f">Taux IK €/km</label><input id="k_taux" inputmode="decimal" value="${k?String(k.taux).replace('.',','):state.id.ik}"></div></div>
+    <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
+    <button class="btn amber" onclick="saveKm('${id||""}')">Enregistrer</button></div>
+    ${k?`<button class="btn red" style="margin-top:10px" onclick="delKm('${id}')">Supprimer</button>`:""}`);
+}
+function saveKm(id){
+  const o={noteId:view.noteId,marque:val("k_marque"),cv:val("k_cv"),depart:val("k_dep"),arrivee:val("k_arr"),
+    nbkm:fnum("k_km"),taux:fnum("k_taux")||state.id.ik};
+  const n=state.notes.find(x=>x.id===view.noteId);n.vehMarque=o.marque;n.vehCV=o.cv;
+  if(id)Object.assign(state.kms.find(x=>x.id===id),o);else state.kms.push({id:uid(),...o});
+  save();closeModal();render();}
+function delKm(id){state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();render();}
+
+/* ===== Impression — calque formulaire officiel ===== */
+function printNote(id){
+  const n=state.notes.find(x=>x.id===id);const i=state.id;
+  const list=noteExps(id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const kms=noteKms(id);
+  let tHT=0,tTVA=0,tTTC=0,tTiers=0;
+  const rows=list.map(e=>{const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);
+    tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;
+    const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
+    return `<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td>
+      <td class="num">${num2(ht)}</td><td class="num">${num2(tva)}</td><td class="num">${num2(ttc)}</td>
+      <td class="num">${(Number(e.tiers)||0)?num2(e.tiers):"0,00"}</td></tr>`;}).join("");
+  const blanks=Math.max(0,6-list.length);let blankRows="";
+  for(let b=0;b<blanks;b++)blankRows+=`<tr><td>&nbsp;</td><td></td><td></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td></tr>`;
+  const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
+  const veh=kms[0]?`${esc(kms[0].marque||n.vehMarque||"")}${(kms[0].cv||n.vehCV)?" — "+esc(kms[0].cv||n.vehCV)+" CV":""}`:(n.vehMarque?esc(n.vehMarque):"");
+  const kmRows=kms.map(k=>`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td>
+    <td class="num">${num2(k.nbkm)}</td><td class="num">${num2(k.taux||i.ik)}</td><td class="num">${num2(kmTotal(k))}</td></tr>`).join("");
+  const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
+  const cats=CATS.map(c=>`<div class="cat"><span class="ps-box">${n.categorie===c?"✕":""}</span>${c}</div>`).join("");
+  const hasCap=list.some(isCapped);
+
+  const inner=`<div class="ps-wrap">
+    <div class="ps-top">
+      <div class="lt"><div class="brand">TWINJET — PERSONNEL NAVIGANT</div><div class="sub">NOTE DE FRAIS</div></div>
+      <div class="ps-id">
+        <div class="c"><div class="k">Nom</div><div class="vv">${esc(i.nom)}</div></div>
+        <div class="c"><div class="k">Trigrame</div><div class="vv">${esc(i.trigramme)}</div></div>
+        <div class="c"><div class="k">Fonction</div><div class="vv">${esc(i.fonction)}</div></div>
+      </div>
+    </div>
+    <div class="ps-cats">${cats}</div>
+    <div class="ps-objet">
+      <div class="o"><div class="k">Objet</div>${esc(n.objet||"")}</div>
+      <div class="o" style="max-width:30%"><div class="k">Equipage</div>${esc(n.equipage||i.trigramme)}</div>
+      <div class="e"><div class="k">Période</div>${periode}</div>
+    </div>
+    <table class="ps">
+      <thead><tr><th>Date</th><th>Fournisseur</th><th>Libellé</th>
+      <th class="num">HT</th><th class="num">TVA</th><th class="num">TTC</th><th class="num">Dont tiers</th></tr></thead>
+      <tbody>${rows}${blankRows}</tbody>
+      <tfoot><tr><td colspan="3">TOTAL FRAIS</td><td class="num">${num2(tHT)}</td><td class="num">${num2(tTVA)}</td>
+      <td class="num">${num2(tTTC)}</td><td class="num">${num2(tTiers)}</td></tr></tfoot>
+    </table>
+    ${kms.length?`<div class="ps-km-h">Frais kilométriques — Véhicule : ${veh||"—"}</div>
+    <table class="ps"><thead><tr><th>Départ</th><th>Arrivée</th><th class="num">NB KM</th><th class="num">Taux IK €</th><th class="num">Total €</th></tr></thead>
+    <tbody>${kmRows}</tbody></table>`:""}
+    <div class="ps-tot">
+      <div class="t"><span class="l">Total frais TTC</span><span class="v">${num2(tTTC)}</span></div>
+      <div class="t"><span class="l">Total frais km</span><span class="v">${num2(tKM)}</span></div>
+      <div class="t"><span class="l">Total général €</span><span class="v">${num2(tTTC+tKM)}</span></div>
+    </div>
+    <div class="ps-foot">
+      <div class="f"><div class="k">Observation</div></div>
+      <div class="f"><div class="k">Contrôle et validation</div></div>
+      <div class="f"><div class="k">Paiement</div></div>
+    </div>
+    ${hasCap?`<div style="font-size:8.5px;color:#666;padding:4px 9px">Repas plafonnés à ${eur(i.cap)}/couvert (politique Twin Jet) ; dépassement à charge de l'agent.</div>`:""}
+  </div>
+  <div class="ps-ref">NOTE FRAIS V1 PN COMPTA 020524VB — ${esc(i.nom)} · ${periode}</div>`;
+  const slug=(n.titre||n.vol||n.libelle||"note").toString().replace(/[^0-9A-Za-zÀ-ÿ]+/g,"_").slice(0,40);
+  const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.html`;
+  openOrDownload(inner,fname);
+}
+
+function pdfCSS(){return `
+  *{box-sizing:border-box}
+  body{margin:0;background:#525659;color:#000;font-family:-apple-system,system-ui,Arial,sans-serif;font-size:11px}
+  .bar{position:sticky;top:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+    background:#0b2545;color:#fff;padding:12px 16px;z-index:10}
+  .bar button{background:#f5a524;color:#1a1306;border:none;border-radius:9px;font-weight:700;
+    font-size:15px;padding:11px 16px;cursor:pointer;font-family:inherit}
+  .bar span{font-size:12px;opacity:.85}
+  .page{background:#fff;max-width:800px;margin:16px auto;padding:14px}
+  .ps-wrap{border:1.5px solid #000}
+  .ps-top{display:flex;border-bottom:1.5px solid #000}
+  .ps-top .lt{flex:1;padding:7px 9px;border-right:1.5px solid #000}
+  .ps-top .brand{font-weight:700;font-size:14px;letter-spacing:.5px}
+  .ps-top .sub{font-size:9px;letter-spacing:2px;color:#333}
+  .ps-id{display:flex}
+  .ps-id .c{padding:6px 9px;border-right:1px solid #000;min-width:90px}
+  .ps-id .c:last-child{border-right:none}
+  .ps-id .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  .ps-id .vv{font-weight:600;font-size:12px}
+  .ps-cats{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1.5px solid #000}
+  .ps-cats .cat{padding:5px 8px;border-right:1px solid #000;display:flex;align-items:center;gap:6px;font-size:10px}
+  .ps-cats .cat:nth-child(4n){border-right:none}
+  .ps-cats .cat:nth-child(-n+4){border-bottom:1px solid #000}
+  .ps-box{width:12px;height:12px;border:1.2px solid #000;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;line-height:1}
+  .ps-objet{display:flex;border-bottom:1.5px solid #000}
+  .ps-objet .o{flex:1;padding:5px 9px;border-right:1px solid #000}
+  .ps-objet .e{padding:5px 9px;min-width:120px}
+  .ps-objet .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  table.ps{width:100%;border-collapse:collapse}
+  table.ps th{background:#eef1f5;border-bottom:1px solid #000;border-right:1px solid #ccc;padding:5px 6px;font-size:9px;text-transform:uppercase;letter-spacing:.4px;text-align:left}
+  table.ps th.num,table.ps td.num{text-align:right;font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
+  table.ps td{border-bottom:1px solid #ddd;border-right:1px solid #eee;padding:5px 6px;vertical-align:top;font-size:10.5px}
+  table.ps tfoot td{border-top:1.5px solid #000;border-bottom:none;font-weight:700;background:#f6f7f9}
+  .ps-km-h{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:#555;padding:6px 9px 2px}
+  .ps-tot{display:flex;border-top:1.5px solid #000}
+  .ps-tot .t{flex:1;padding:7px 9px;border-right:1px solid #000;display:flex;justify-content:space-between}
+  .ps-tot .t:last-child{border-right:none;background:#eef1f5}
+  .ps-tot .l{font-size:9px;text-transform:uppercase;letter-spacing:.6px;color:#444}
+  .ps-tot .v{font-family:ui-monospace,Menlo,monospace;font-weight:700}
+  .ps-foot{display:flex;border-top:1.5px solid #000;min-height:50px}
+  .ps-foot .f{flex:1;padding:6px 9px;border-right:1px solid #000}
+  .ps-foot .f:last-child{border-right:none}
+  .ps-foot .k{font-size:8px;text-transform:uppercase;letter-spacing:1px;color:#555}
+  .ps-ref{font-size:8px;color:#888;text-align:right;padding:4px 2px 0;font-family:ui-monospace,Menlo,monospace}
+  @media print{.bar{display:none}.page{margin:0;padding:0;max-width:none}body{background:#fff}@page{size:A4 portrait;margin:10mm}}
+`;}
+
+function openOrDownload(inner,fname){
+  const doc=`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Note de frais</title>
+<style>${pdfCSS()}</style></head><body>
+<div class="bar"><button onclick="window.print()">⎙ Enregistrer en PDF / Imprimer</button>
+<span>Dans les options d'impression, choisis « Enregistrer en PDF ».</span></div>
+<div class="page">${inner}</div>
+<scr`+`ipt>setTimeout(function(){try{window.print()}catch(e){}},600);</scr`+`ipt>
+</body></html>`;
+  let win=null;
+  try{win=window.open("","_blank");}catch(e){}
+  if(win&&win.document){win.document.open();win.document.write(doc);win.document.close();return;}
+  try{
+    const blob=new Blob([doc],{type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download=fname;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    alert("Note téléchargée : "+fname+"\nOuvre le fichier, puis Partager → Imprimer → Enregistrer en PDF.");
+  }catch(e){
+    alert("Génération impossible dans cet aperçu. Ouvre le fichier ndf-twinjet.html directement dans ton navigateur, puis réessaie.");
+  }
+}
+
+(async()=>{await load();render();})();
+
+/* PWA : service worker pour le hors ligne (uniquement en contexte sécurisé) */
+if("serviceWorker" in navigator && location.protocol==="https:"){
+  window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+}
+</script>
+</body>
+</html>
