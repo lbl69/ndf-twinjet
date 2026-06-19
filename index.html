@@ -542,7 +542,7 @@ function printNote(id){
       </div>
     </div>
   </div>
-  <div class="ref">NOTE FRAIS V1 PN COMPTA 020524VB — ${esc(i.nom)} · ${periode}</div>`;
+  <div class="ref">NOTE FRAIS V1 PN COMPTA 020524VB</div>`;
 
   const slug=(n.titre||n.vol||n.libelle||"note").toString().replace(/[^0-9A-Za-zÀ-ÿ]+/g,"_").slice(0,40);
   const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.html`;
@@ -576,7 +576,7 @@ function pdfCSS(){return `
   .eq{flex:0 0 210px;border-left:2px solid #000;padding:6px 9px;font-weight:700}
   .objrow{display:flex;border-bottom:2px solid #000}
   .ol{flex:0 0 64%;display:flex}
-  .ol .objet{flex:0 0 34%;padding:5px 9px;border-right:1px solid #000;font-weight:700;font-style:italic;text-decoration:underline}
+  .ol .objet{flex:0 0 62%;padding:5px 9px;border-right:1px solid #000;font-weight:700;font-style:italic;text-decoration:underline}
   .ol .objet .k{text-decoration:none;font-style:normal}
   .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:10px}
   .or{flex:1;display:flex;border-left:2px solid #000}
