@@ -158,6 +158,8 @@
 <body>
 <div class="app" id="app"></div>
 <div class="print-sheet" id="printSheet"></div>
+<script src="vendor/jspdf.umd.min.js"></script>
+<script src="vendor/html2canvas.min.js"></script>
 
 <script>
 /* ===== Constantes ===== */
@@ -299,7 +301,7 @@ function renderDetail(){
       <button class="btn ghost" onclick="openExp()">+ Dépense</button>
       <button class="btn ghost" onclick="openKm()">+ Km</button>
     </div>
-    <button class="btn amber" style="margin-top:10px" onclick="printNote('${n.id}')">⎙ Générer le PDF</button>
+    <button class="btn amber" style="margin-top:10px" onclick="generatePDF('${n.id}')">⎙ Générer le PDF</button>
     <button class="btn red" style="margin-top:10px" onclick="delNote('${n.id}')">Supprimer la note</button>`;
 }
 function expHTML(e){
@@ -461,7 +463,7 @@ function saveKm(id){
 function delKm(id){state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();render();}
 
 /* ===== Impression — calque formulaire officiel ===== */
-function printNote(id){
+function buildSheet(id){
   const n=state.notes.find(x=>x.id===id);const i=state.id;
   const list=noteExps(id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
   const kms=noteKms(id);
@@ -545,8 +547,8 @@ function printNote(id){
   <div class="ref">NOTE FRAIS V1 PN COMPTA 020524VB</div>`;
 
   const slug=(n.titre||n.vol||n.libelle||"note").toString().replace(/[^0-9A-Za-zÀ-ÿ]+/g,"_").slice(0,40);
-  const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.html`;
-  openOrDownload(inner,fname);
+  const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.pdf`;
+  return {inner,fname};
 }
 
 function pdfCSS(){return `
@@ -643,6 +645,36 @@ function openOrDownload(inner,fname){
   }catch(e){
     alert("Génération impossible dans cet aperçu. Ouvre le fichier ndf-twinjet.html directement dans ton navigateur, puis réessaie.");
   }
+}
+
+
+/* ===== Génération PDF directe (paysage), téléchargement, sans boîte d'impression ===== */
+async function generatePDF(id){
+  const built=buildSheet(id); const inner=built.inner, fname=built.fname;
+  // Repli si les librairies ne sont pas présentes (ex. fichier autonome) : ancienne voie impression
+  if(!(window.jspdf && window.html2canvas)){ openOrDownload(inner, fname.replace(/\.pdf$/,".html")); return; }
+  const ifr=document.createElement("iframe");
+  ifr.style.cssText="position:fixed;left:-99999px;top:0;width:1123px;height:1300px;border:0;background:#fff";
+  document.body.appendChild(ifr);
+  try{
+    const d=ifr.contentDocument;
+    d.open();
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pdfCSS()} body{background:#fff} .page{margin:0;max-width:none;padding:0}</style></head><body><div class="page">${inner}</div></body></html>`);
+    d.close();
+    await new Promise(r=>setTimeout(r,350));
+    const el=d.querySelector(".page");
+    const canvas=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false,width:el.scrollWidth,height:el.scrollHeight,windowWidth:1123});
+    const JS=window.jspdf.jsPDF;
+    const pdf=new JS({orientation:"landscape",unit:"mm",format:"a4"});
+    const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
+    const ratio=Math.min(pw/canvas.width, ph/canvas.height);
+    const w=canvas.width*ratio, h=canvas.height*ratio;
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",(pw-w)/2,0,w,h);
+    pdf.save(fname);
+  }catch(e){
+    alert("Génération PDF impossible ("+(e&&e.message?e.message:e)+"). Repli sur l'impression.");
+    openOrDownload(inner, fname.replace(/\.pdf$/,".html"));
+  }finally{ ifr.remove(); }
 }
 
 (async()=>{await load();render();})();
