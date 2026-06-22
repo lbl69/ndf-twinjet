@@ -1,5 +1,5 @@
 /* NDF Twin Jet — service worker (app shell, cache-first) */
-const CACHE = "ndf-v6";
+const CACHE = "ndf-v7";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./jspdf.umd.min.js", "./html2canvas.min.js"];
 
 self.addEventListener("install", (e) => {

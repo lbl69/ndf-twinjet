@@ -473,7 +473,7 @@ function buildSheet(id){
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
   const taux=kms[0]?num2(kms[0].taux||i.ik):num2(i.ik);
-  const ROWS=Math.max(16,list.length,kms.length+2);
+  const ROWS=Math.max(24,list.length,kms.length+2);
 
   let fr="";
   for(let r=0;r<ROWS;r++){const e=list[r];
@@ -667,9 +667,10 @@ async function generatePDF(id){
     const JS=window.jspdf.jsPDF;
     const pdf=new JS({orientation:"landscape",unit:"mm",format:"a4"});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-    const ratio=Math.min(pw/canvas.width, ph/canvas.height);
+    const M=6;
+    const ratio=Math.min((pw-2*M)/canvas.width,(ph-2*M)/canvas.height);
     const w=canvas.width*ratio, h=canvas.height*ratio;
-    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",(pw-w)/2,0,w,h);
+    pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",(pw-w)/2,(ph-h)/2,w,h);
     pdf.save(fname);
   }catch(e){
     alert("Génération PDF impossible ("+(e&&e.message?e.message:e)+"). Repli sur l'impression.");
