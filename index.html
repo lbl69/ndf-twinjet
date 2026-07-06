@@ -561,10 +561,10 @@ function pdfCSS(){return `
   .tj{display:flex;border:2px solid #000}
   .spine{position:relative;width:46px;border-right:2px solid #000}
   .spine .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;display:flex;align-items:baseline;gap:10px}
-  .spine .stitle{font-weight:800;font-style:italic;font-size:27px;letter-spacing:1px}
-  .spine .ssub{font-weight:700;font-style:italic;font-size:13px;letter-spacing:1px}
+  .spine .stitle{font-weight:800;font-style:italic;font-size:28px;letter-spacing:1px}
+  .spine .ssub{font-weight:700;font-style:italic;font-size:20px;letter-spacing:.5px}
   .main{flex:1;min-width:0}
-  .k{font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#444}
+  .k{font-size:8px;letter-spacing:.3px;color:#111;font-weight:700;font-style:italic;text-decoration:underline}
   .idrow{display:flex;border-bottom:2px solid #000}
   .idrow .lab{padding:4px 8px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
   .idrow .val{flex:1;padding:4px 10px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
@@ -580,19 +580,19 @@ function pdfCSS(){return `
   .objrow{display:flex;border-bottom:2px solid #000}
   .ol{flex:0 0 64%;display:flex}
   .ol .objet{flex:0 0 62%;padding:5px 9px;border-right:1px solid #000;display:flex;align-items:center;gap:6px}
-  .ol .objet .olab{font-weight:700;font-style:italic;text-decoration:underline;font-size:11px;white-space:nowrap}
-  .ol .objet .oval{font-weight:400;font-style:normal;font-size:12px}
-  .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:10px}
+  .ol .objet .olab{font-weight:700;font-style:italic;text-decoration:underline;font-size:15px;white-space:nowrap}
+  .ol .objet .oval{font-weight:400;font-style:normal;font-size:13px}
+  .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:9px;text-decoration:underline}
   .or{flex:1;display:flex;border-left:2px solid #000}
   .or .veh{flex:1;padding:4px 9px;border-right:1px solid #000;font-style:italic}
   .or .ik{flex:0 0 92px;padding:4px 9px;font-style:italic}
   .body{display:flex}
   .left{flex:0 0 64%;border-right:2px solid #000}
-  .fraisband{background:#f1c29e;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
+  .fraisband{background:#fdeada;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
   table{width:100%;border-collapse:collapse;table-layout:fixed}
   table.fr th,table.fr td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  table.fr th{background:#f1c29e;font-style:italic;font-size:10px;height:30px;white-space:normal;line-height:1.05;vertical-align:middle}
-  table.fr td{background:#f9ddc9}
+  table.fr th{background:#fdeada;font-style:italic;font-size:10px;height:30px;white-space:normal;line-height:1.05;vertical-align:middle}
+  table.fr td{background:#fdeada}
   table.fr th:last-child,table.fr td:last-child{border-right:none}
   table.fr th:nth-child(1),table.fr td:nth-child(1){width:11%}
   table.fr th:nth-child(2),table.fr td:nth-child(2){width:18%}
@@ -604,23 +604,23 @@ function pdfCSS(){return `
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .right{flex:1}
   table.km th,table.km td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap}
-  table.km th{background:#bdbdbd;font-style:italic;font-size:10px;height:48px;vertical-align:middle}
-  table.km td{background:#d9d9d9}
+  table.km th{background:#dddddd;font-style:italic;font-size:10px;height:48px;vertical-align:middle}
+  table.km td{background:#dddddd}
   table.km th:last-child,table.km td:last-child{border-right:none}
   table.km th:nth-child(1),table.km td:nth-child(1){width:30%}
   table.km th:nth-child(2),table.km td:nth-child(2){width:30%}
   table.km th:nth-child(3),table.km td:nth-child(3){width:18%}
   table.km th:nth-child(4),table.km td:nth-child(4){width:22%}
-  table.km .ktot td{background:#bdbdbd;font-weight:700;text-align:left}
+  table.km .ktot td{background:#dddddd;font-weight:700;text-align:left}
   table.km .ktot td.num,table.km .ttot td.num{text-align:right}
-  table.km .ttot td{background:#f1c29e;font-weight:700;text-align:left}
+  table.km .ttot td{background:#fdeada;font-weight:700;text-align:left}
   .footrow{display:flex;border-top:2px solid #000}
   .fleft{flex:0 0 64%;display:flex;border-right:2px solid #000}
   .fleft .fcell{flex:1;border-right:1px solid #000;padding:5px 9px;min-height:50px;font-style:italic}
   .fleft .fcell:last-child{border-right:none}
   .gen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-  .gen .k{font-weight:700;font-size:13px;color:#000}
-  .gen .genv{font-weight:700;font-size:16px;font-family:ui-monospace,Menlo,monospace}
+  .gen .k{font-weight:700;font-size:13px;color:#000;font-style:normal;text-decoration:none}
+  .gen .genv{font-weight:700;font-style:italic;text-decoration:underline;font-size:16px;font-family:ui-monospace,Menlo,monospace}
   .ref{font-size:8px;color:#555;padding:5px 2px 0;font-family:ui-monospace,Menlo,monospace}
   @media print{.bar{display:none}.page{margin:0;padding:0;max-width:none}body{background:#fff}@page{size:A4 landscape;margin:8mm}}
 `;}
