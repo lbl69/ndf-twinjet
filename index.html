@@ -472,8 +472,8 @@ function buildSheet(id){
   const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
-  const taux=kms[0]?num2(kms[0].taux||i.ik):num2(i.ik);
-  const ROWS=Math.max(24,list.length,kms.length+2);
+  const taux=kms[0]?num2(kms[0].taux||i.ik):"";
+  const ROWS=Math.max(29,list.length,kms.length+2);
 
   let fr="";
   for(let r=0;r<ROWS;r++){const e=list[r];
@@ -495,12 +495,12 @@ function buildSheet(id){
   const cat=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>${c}`;
 
   const inner=`<div class="tj">
-    <div class="spine"><span>TWINJET&nbsp;&nbsp;&nbsp;PERSONNEL NAVIGANT</span></div>
+    <div class="spine"><div class="rot"><span class="stitle">TWINJET</span> <span class="ssub">PERSONNEL NAVIGANT</span></div></div>
     <div class="main">
       <div class="idrow">
-        <div class="c"><span class="k">NOM</span> ${esc(i.nom)}</div>
-        <div class="c"><span class="k">Trigrame</span> ${esc(i.trigramme)}</div>
-        <div class="c"><span class="k">Fonction</span> ${esc(i.fonction)}</div>
+        <div class="lab">NOM</div><div class="val vnom">${esc(i.nom)}</div>
+        <div class="lab">Trigrame</div><div class="val">${esc(i.trigramme)}</div>
+        <div class="lab">Fonction</div><div class="val">${esc(i.fonction)}</div>
       </div>
       <div class="catrow">
         <div class="cats">
@@ -511,7 +511,7 @@ function buildSheet(id){
       </div>
       <div class="objrow">
         <div class="ol">
-          <div class="objet"><span class="k">Objet :</span> ${esc(n.objet||"")}</div>
+          <div class="objet"><span class="olab">Objet :</span> <span class="oval">${esc(n.objet||"")}</span></div>
           <div class="dev">Devises et taux de conversion</div>
         </div>
         <div class="or">
@@ -559,16 +559,17 @@ function pdfCSS(){return `
   .bar span{font-size:12px;opacity:.85}
   .page{background:#fff;max-width:1120px;margin:16px auto;padding:10px}
   .tj{display:flex;border:2px solid #000}
-  .spine{position:relative;width:44px;border-right:2px solid #000}
-  .spine span{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;font-weight:800;font-style:italic;font-size:19px;letter-spacing:1px}
+  .spine{position:relative;width:46px;border-right:2px solid #000}
+  .spine .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;display:flex;align-items:baseline;gap:10px}
+  .spine .stitle{font-weight:800;font-style:italic;font-size:27px;letter-spacing:1px}
+  .spine .ssub{font-weight:700;font-style:italic;font-size:13px;letter-spacing:1px}
   .main{flex:1;min-width:0}
   .k{font-size:8px;text-transform:uppercase;letter-spacing:.5px;color:#444}
   .idrow{display:flex;border-bottom:2px solid #000}
-  .idrow .c{padding:5px 9px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:13px}
-  .idrow .c:first-child{flex:1.3}
-  .idrow .c:nth-child(2){flex:1;text-align:center}
-  .idrow .c:last-child{flex:1.3;text-align:center;border-right:none}
-  .idrow .k{font-style:normal;display:inline-block;margin-right:4px;vertical-align:1px}
+  .idrow .lab{padding:4px 8px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
+  .idrow .val{flex:1;padding:4px 10px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
+  .idrow .val.vnom{flex:1.5;justify-content:flex-start}
+  .idrow .val:last-child{border-right:none}
   .catrow{display:flex;border-bottom:2px solid #000}
   .cats{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start}
   .cats>div{flex:0 0 25%;display:flex;align-items:center;gap:5px;padding:5px 9px;border-right:1px solid #000;border-bottom:1px solid #000;font-weight:700;font-size:11px}
@@ -578,19 +579,20 @@ function pdfCSS(){return `
   .eq{flex:0 0 210px;border-left:2px solid #000;padding:6px 9px;font-weight:700}
   .objrow{display:flex;border-bottom:2px solid #000}
   .ol{flex:0 0 64%;display:flex}
-  .ol .objet{flex:0 0 62%;padding:5px 9px;border-right:1px solid #000;font-weight:700;font-style:italic;text-decoration:underline}
-  .ol .objet .k{text-decoration:none;font-style:normal}
+  .ol .objet{flex:0 0 62%;padding:5px 9px;border-right:1px solid #000;display:flex;align-items:center;gap:6px}
+  .ol .objet .olab{font-weight:700;font-style:italic;text-decoration:underline;font-size:11px;white-space:nowrap}
+  .ol .objet .oval{font-weight:400;font-style:normal;font-size:12px}
   .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:10px}
   .or{flex:1;display:flex;border-left:2px solid #000}
   .or .veh{flex:1;padding:4px 9px;border-right:1px solid #000;font-style:italic}
   .or .ik{flex:0 0 92px;padding:4px 9px;font-style:italic}
   .body{display:flex}
   .left{flex:0 0 64%;border-right:2px solid #000}
-  .fraisband{background:#f4b870;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
+  .fraisband{background:#f1c29e;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
   table{width:100%;border-collapse:collapse;table-layout:fixed}
-  table.fr th,table.fr td{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 5px;height:22px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  table.fr th{background:#f4b870;font-style:italic;font-size:10px;height:26px}
-  table.fr td{background:#fbdcb9}
+  table.fr th,table.fr td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  table.fr th{background:#f1c29e;font-style:italic;font-size:10px;height:30px;white-space:normal;line-height:1.05;vertical-align:middle}
+  table.fr td{background:#f9ddc9}
   table.fr th:last-child,table.fr td:last-child{border-right:none}
   table.fr th:nth-child(1),table.fr td:nth-child(1){width:11%}
   table.fr th:nth-child(2),table.fr td:nth-child(2){width:18%}
@@ -601,8 +603,8 @@ function pdfCSS(){return `
   table.fr th:nth-child(7),table.fr td:nth-child(7){width:13%}
   .num{text-align:right;font-variant-numeric:tabular-nums}
   .right{flex:1}
-  table.km th,table.km td{border-right:1px solid #000;border-bottom:1px solid #000;padding:2px 5px;height:22px;overflow:hidden;white-space:nowrap}
-  table.km th{background:#bdbdbd;font-style:italic;font-size:10px;height:44px;vertical-align:middle}
+  table.km th,table.km td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap}
+  table.km th{background:#bdbdbd;font-style:italic;font-size:10px;height:48px;vertical-align:middle}
   table.km td{background:#d9d9d9}
   table.km th:last-child,table.km td:last-child{border-right:none}
   table.km th:nth-child(1),table.km td:nth-child(1){width:30%}
@@ -611,7 +613,7 @@ function pdfCSS(){return `
   table.km th:nth-child(4),table.km td:nth-child(4){width:22%}
   table.km .ktot td{background:#bdbdbd;font-weight:700;text-align:left}
   table.km .ktot td.num,table.km .ttot td.num{text-align:right}
-  table.km .ttot td{background:#f4b870;font-weight:700;text-align:left}
+  table.km .ttot td{background:#f1c29e;font-weight:700;text-align:left}
   .footrow{display:flex;border-top:2px solid #000}
   .fleft{flex:0 0 64%;display:flex;border-right:2px solid #000}
   .fleft .fcell{flex:1;border-right:1px solid #000;padding:5px 9px;min-height:50px;font-style:italic}
@@ -659,7 +661,7 @@ async function generatePDF(id){
   try{
     const d=ifr.contentDocument;
     d.open();
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pdfCSS()} body{background:#fff} .page{margin:0;max-width:none;padding:0}</style></head><body><div class="page">${inner}</div></body></html>`);
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pdfCSS()} body{background:#fff;margin:0} .page{margin:0;max-width:none;padding:0;width:1123px}</style></head><body><div class="page">${inner}</div></body></html>`);
     d.close();
     await new Promise(r=>setTimeout(r,350));
     const el=d.querySelector(".page");
@@ -667,7 +669,7 @@ async function generatePDF(id){
     const JS=window.jspdf.jsPDF;
     const pdf=new JS({orientation:"landscape",unit:"mm",format:"a4"});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
-    const M=6;
+    const M=5;
     const ratio=Math.min((pw-2*M)/canvas.width,(ph-2*M)/canvas.height);
     const w=canvas.width*ratio, h=canvas.height*ratio;
     pdf.addImage(canvas.toDataURL("image/jpeg",0.95),"JPEG",(pw-w)/2,(ph-h)/2,w,h);
