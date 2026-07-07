@@ -359,7 +359,7 @@ function openNote(id){
     <div class="toggle" id="ntype">
       <button class="${noteDraftType==='mission'?'on':''}" onclick="setNoteType('mission')">Mission / vol</button>
       <button class="${noteDraftType==='ligne'?'on':''}" onclick="setNoteType('ligne')">Mensuel · ligne</button></div>
-    <label class="f">Titre de la note</label><input id="n_titre" placeholder="Ce que tu veux : Vol LYS–STR, Journaux + repas…" value="${esc(n?.titre||"")}">
+    <label class="f">Objet / Titre</label><input id="n_titre" placeholder="Ex. Vol LYS–STR · journaux + repas, ou Enveloppes de vol" value="${esc(n?.titre||"")}">
     <div id="nfields"></div>
     <label class="f">Catégorie</label>
     <div class="seg" id="n_cat">${CATS.map(c=>`<button class="${catPick===c?'on':''}" onclick="pickCat(this,'${esc(c)}')">${c}</button>`).join("")}</div>
@@ -373,20 +373,17 @@ function setNoteType(t){noteDraftType=t;
   renderNoteFields(null);}
 function renderNoteFields(n){const box=document.getElementById("nfields");
   if(noteDraftType==="mission"){box.innerHTML=`
-    <label class="f">N° de vol / mission</label><input id="n_vol" placeholder="T7 7612" value="${esc(n?.vol||"")}">
     <label class="f">Date</label><input id="n_date" placeholder="JJ/MM/AA" value="${esc(n?.date||todayStr())}">`;
   }else{box.innerHTML=`
-    <label class="f">Libellé de la ligne</label><input id="n_lib" placeholder="Ligne LYS–STR" value="${esc(n?.libelle||"")}">
-    <label class="f">Mois</label><input id="n_mois" type="month" value="${esc(n?.mois||monthNow())}">
-    <label class="f">N° de ligne (optionnel)</label><input id="n_vol" placeholder="T7 76xx" value="${esc(n?.vol||"")}">`;}
+    <label class="f">Mois</label><input id="n_mois" type="month" value="${esc(n?.mois||monthNow())}">`;}
 }
 function pickCat(btn,c){catPick=c;btn.parentNode.querySelectorAll("button").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
 function saveNote(id){
   const titre=val("n_titre");
   const common={categorie:catPick,titre:titre,objet:titre,equipage:val("n_eq")||state.id.trigramme};
   let o;
-  if(noteDraftType==="mission") o={type:"mission",vol:val("n_vol")||"Vol",date:val("n_date"),...common};
-  else o={type:"ligne",libelle:val("n_lib")||"Ligne",mois:document.getElementById("n_mois").value,vol:val("n_vol"),...common};
+  if(noteDraftType==="mission") o={type:"mission",date:val("n_date"),...common};
+  else o={type:"ligne",mois:document.getElementById("n_mois").value,...common};
   if(id){Object.assign(state.notes.find(x=>x.id===id),o);}
   else{const nid=uid();state.notes.push({id:nid,...o});view={page:"detail",noteId:nid};}
   save();closeModal();render();
