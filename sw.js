@@ -1,6 +1,6 @@
 /* NDF Twin Jet — service worker (app shell, cache-first) */
-const CACHE = "ndf-v14";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./jspdf.umd.min.js", "./html2canvas.min.js"];
+const CACHE = "ndf-v18";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./apple-touch-icon.png", "./jspdf.umd.min.js", "./html2canvas.min.js"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

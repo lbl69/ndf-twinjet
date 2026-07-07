@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="NDF">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
   :root{
     --ink:#0e1116; --panel:#161b22; --panel2:#1c232c; --line:#262d37;
@@ -471,81 +471,76 @@ function buildSheet(id){
   list.forEach(e=>{const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;});
   const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
-  const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
-  const taux=kms[0]?num2(kms[0].taux||i.ik):"";
-  const ROWS=Math.max(29,list.length,kms.length+2);
-
+  /* Original : 24 rangées frais (11..34), 22 rangées km (11..32) + 2 totaux */
+  const FR=Math.max(24,list.length,kms.length+2);
+  const KR=FR-2;
   let fr="";
-  for(let r=0;r<ROWS;r++){const e=list[r];
+  for(let r=0;r<FR;r++){const e=list[r];
     if(e){const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);
       const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
-      fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td class="lib">${lib}</td>`+
-          `<td class="num">${num2(ht)}</td><td class="num">${num2(tva)}</td><td class="num">${num2(ttc)}</td>`+
-          `<td class="num">${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
-    } else fr+=`<tr><td></td><td></td><td class="lib"></td><td class="num"></td><td class="num"></td><td class="num"></td><td class="num"></td></tr>`;
+      fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td><td>${num2(ht)}</td><td>${num2(tva)}</td><td>${num2(ttc)}</td><td>${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
+    } else fr+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   }
-  let km="";const KROWS=ROWS-2;
-  for(let r=0;r<KROWS;r++){const k=kms[r];
-    if(k)km+=`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td><td class="num">${num2(k.nbkm)}</td><td class="num">${num2(kmTotal(k))}</td></tr>`;
-    else km+=`<tr><td></td><td></td><td class="num"></td><td class="num"></td></tr>`;
+  let km="";
+  for(let r=0;r<KR;r++){const k=kms[r];
+    if(k)km+=`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td><td>${num2(k.nbkm)}</td><td class="rt">${num2(kmTotal(k))}</td></tr>`;
+    else km+=`<tr><td></td><td></td><td></td><td class="rt"></td></tr>`;
   }
-  km+=`<tr class="ktot"><td colspan="3">TOTAL FRAIS KM</td><td class="num">${num2(tKM)}</td></tr>`;
-  km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="num">${num2(tTTC)}</td></tr>`;
-
-  const cat=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>${c}`;
+  km+=`<tr class="ktot"><td colspan="3">TOTAL FRAIS KM</td><td class="tv">${num2(tKM)}</td></tr>`;
+  km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="tv">${num2(tTTC)}</td></tr>`;
+  const cb=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>`;
+  const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
+  const taux=kms[0]?num2(kms[0].taux||i.ik):"";
 
   const inner=`<div class="tj">
-    <div class="spine"><div class="rot"><span class="stitle">TWINJET</span> <span class="ssub">PERSONNEL NAVIGANT</span></div></div>
-    <div class="main">
-      <div class="idrow">
-        <div class="lab">NOM</div><div class="val vnom">${esc(i.nom)}</div>
-        <div class="lab">Trigrame</div><div class="val">${esc(i.trigramme)}</div>
-        <div class="lab">Fonction</div><div class="val">${esc(i.fonction)}</div>
+   <div class="spine"><div class="rot"><span class="st">TWINJET</span><span class="ss">PERSONNEL NAVIGANT</span></div></div>
+   <div class="main">
+    <div class="hdr">
+      <div style="width:101px">NOM</div><div style="width:285px">${esc(i.nom)}</div><div style="width:127px">Trigrame</div><div style="width:257px">${esc(i.trigramme)}</div><div style="width:115px">Fonction</div><div style="width:162px">${esc(i.fonction)}</div>
+    </div>
+    <div class="zcats">
+      <div class="crow" style="top:8px">
+        <span class="cg" style="left:4px">${cb("Ligne")}<b>Ligne</b></span>
+        <span class="cg" style="left:221px">${cb("Charter")}<b>Charter</b></span>
+        <span class="cg" style="left:435px">${cb("Evasan")}<b>Evasan</b></span>
+        <span class="cg" style="left:744px">${cb("MEP")}<b>MEP</b></span>
       </div>
-      <div class="catrow">
-        <div class="cats">
-          <div>${cat("Ligne")}</div><div>${cat("Charter")}</div><div>${cat("Evasan")}</div><div>${cat("MEP")}</div>
-          <div>${cat("Commercial")}</div><div>${cat("Audit")}</div><div>${cat("Training/Formation")}</div><div>${cat("Administratif")}</div>
-        </div>
-        <div class="eq"><span class="k">Equipage :</span> ${esc(n.equipage||i.trigramme)}</div>
+      <div class="crow" style="top:36px">
+        <span class="cg" style="left:4px">${cb("Commercial")}<b>Commercial</b></span>
+        <span class="cg" style="left:221px">${cb("Audit")}<b>Audit</b></span>
+        <span class="cg" style="left:435px">${cb("Training/Formation")}<b>Training/Formation</b></span>
+        <span class="cg" style="left:744px">${cb("Administratif")}<b>Administratif</b></span>
       </div>
-      <div class="objrow">
-        <div class="ol">
-          <div class="objet"><span class="olab">Objet :</span> <span class="oval">${esc(n.objet||"")}</span></div>
-          <div class="dev">Devises et taux de conversion</div>
-        </div>
-        <div class="or">
-          <div class="veh"><span class="k">Véhicule : Marque CV</span><br>${veh}</div>
-          <div class="ik"><span class="k">Taux IK €</span><br>${taux}</div>
-        </div>
+      <div class="eqbox"><span class="u8">Equipage:</span> ${esc(n.equipage||i.trigramme)}</div>
+    </div>
+    <div class="zobj">
+      <div class="ob"><span class="olab">Objet :</span> <span class="oval">${esc(n.objet||"")}</span><span class="dev u8">Devises et taux de conversion</span></div>
+      <div class="ve"><span class="u8">Véhicule : Marque CV</span><div class="vv">${veh}</div></div>
+      <div class="ika"><span class="u8">Taux IK €</span><div class="vv">${taux}</div></div>
+    </div>
+    <div class="zbody">
+      <div class="fl">
+        <div class="fband">FRAIS</div>
+        <table class="tfr"><colgroup><col style="width:101px"><col style="width:120px"><col style="width:214px"><col style="width:76px"><col style="width:81px"><col style="width:70px"><col style="width:76px"></colgroup>
+          <thead><tr><th>Date</th><th>Fournisseur</th><th>Libellé</th><th>HT</th><th>TVA</th><th>TTC</th><th class="w2">DONT TIERS</th></tr></thead>
+          <tbody>${fr}</tbody></table>
       </div>
-      <div class="body">
-        <div class="left">
-          <div class="fraisband">FRAIS</div>
-          <table class="fr">
-            <thead><tr><th>Date</th><th>Fournisseur</th><th>Libellé</th><th class="num">HT</th><th class="num">TVA</th><th class="num">TTC</th><th class="num">DONT TIERS</th></tr></thead>
-            <tbody>${fr}</tbody>
-          </table>
-        </div>
-        <div class="right">
-          <table class="km">
-            <thead><tr><th>Départ</th><th>Arrivée</th><th class="num">NB KM</th><th class="num">Total €</th></tr></thead>
-            <tbody>${km}</tbody>
-          </table>
-        </div>
-      </div>
-      <div class="footrow">
-        <div class="fleft">
-          <div class="fcell"><span class="k">Observation</span></div>
-          <div class="fcell"><span class="k">Contrôle et validation</span></div>
-          <div class="fcell"><span class="k">Paiement</span></div>
-        </div>
-        <div class="gen"><div class="k">TOTAL GENERAL</div><div class="genv">${num2(tTTC+tKM)} €</div></div>
+      <div class="kr">
+        <table class="tkm"><colgroup><col style="width:75px"><col style="width:70px"><col style="width:66px"><col style="width:94px"></colgroup>
+          <thead><tr><th>Départ</th><th>Arrivée</th><th>NB KM</th><th>Total €</th></tr></thead>
+          <tbody>${km}</tbody></table>
       </div>
     </div>
+    <div class="zfoot">
+      <div class="fc" style="width:221px"><span class="u8">Observation</span></div>
+      <div class="fc" style="width:214px"><span class="u8">Contrôle et validation</span></div>
+      <div class="fc" style="width:305px"><span class="u8">Paiement</span></div>
+      <div class="tg" style="width:213px">TOTAL GENERAL</div>
+      <div class="tgv" style="width:94px">${num2(tTTC+tKM)} €</div>
+    </div>
+   </div>
   </div>
   <div class="ref">NOTE FRAIS V1 PN COMPTA 020524VB</div>`;
-
   const slug=(n.titre||n.vol||n.libelle||"note").toString().replace(/[^0-9A-Za-zÀ-ÿ]+/g,"_").slice(0,40);
   const fname=`NDF_${slug}_${periode.replace(/[^0-9A-Za-z]+/g,"-")}.pdf`;
   return {inner,fname};
@@ -553,76 +548,69 @@ function buildSheet(id){
 
 function pdfCSS(){return `
   *{box-sizing:border-box}
-  body{margin:0;background:#525659;color:#000;font-family:-apple-system,system-ui,Arial,sans-serif;font-size:11px}
-  .bar{position:sticky;top:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#0b2545;color:#fff;padding:12px 16px;z-index:10}
+  body{margin:0;background:#525659;color:#000;font-family:Arial,'Helvetica Neue',Helvetica,sans-serif}
+  .bar{position:sticky;top:0;display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:#0b2545;color:#fff;padding:12px 16px;z-index:10;font-size:15px}
   .bar button{background:#f5a524;color:#1a1306;border:none;border-radius:9px;font-weight:700;font-size:15px;padding:11px 16px;cursor:pointer;font-family:inherit}
   .bar span{font-size:12px;opacity:.85}
-  .page{background:#fff;max-width:1120px;margin:16px auto;padding:10px}
-  .tj{display:flex;border:2px solid #000}
-  .spine{position:relative;width:46px;border-right:2px solid #000}
-  .spine .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;display:flex;align-items:baseline;gap:10px}
-  .spine .stitle{font-weight:800;font-style:italic;font-size:28px;letter-spacing:1px}
-  .spine .ssub{font-weight:700;font-style:italic;font-size:20px;letter-spacing:.5px}
-  .main{flex:1;min-width:0}
-  .k{font-size:8px;letter-spacing:.3px;color:#111;font-weight:700;font-style:italic;text-decoration:underline}
-  .idrow{display:flex;border-bottom:2px solid #000}
-  .idrow .lab{padding:4px 8px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:11px;display:flex;align-items:center;justify-content:center;white-space:nowrap}
-  .idrow .val{flex:1;padding:4px 10px;border-right:1px solid #000;font-style:italic;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center}
-  .idrow .val.vnom{flex:1.5;justify-content:flex-start}
-  .idrow .val:last-child{border-right:none}
-  .catrow{display:flex;border-bottom:2px solid #000}
-  .cats{flex:1;display:flex;flex-wrap:wrap;align-content:flex-start}
-  .cats>div{flex:0 0 25%;display:flex;align-items:center;gap:5px;padding:5px 9px;border-right:1px solid #000;border-bottom:1px solid #000;font-weight:700;font-size:11px}
-  .cats>div:nth-child(4n){border-right:none}
-  .cats>div:nth-child(n+5){border-bottom:none}
-  .cb{width:13px;height:13px;border:1.4px solid #000;display:inline-flex;align-items:center;justify-content:center;font-weight:700;line-height:1;flex:none}
-  .eq{flex:0 0 210px;border-left:2px solid #000;padding:6px 9px;font-weight:700}
-  .objrow{display:flex;border-bottom:2px solid #000}
-  .ol{flex:0 0 64%;display:flex}
-  .ol .objet{flex:0 0 62%;padding:5px 9px;border-right:1px solid #000;display:flex;align-items:center;gap:6px}
-  .ol .objet .olab{font-weight:700;font-style:italic;text-decoration:underline;font-size:15px;white-space:nowrap}
-  .ol .objet .oval{font-weight:400;font-style:normal;font-size:13px}
-  .ol .dev{flex:1;padding:5px 9px;text-align:center;font-style:italic;font-weight:700;font-size:9px;text-decoration:underline}
-  .or{flex:1;display:flex;border-left:2px solid #000}
-  .or .veh{flex:1;padding:4px 9px;border-right:1px solid #000;font-style:italic}
-  .or .ik{flex:0 0 92px;padding:4px 9px;font-style:italic}
-  .body{display:flex}
-  .left{flex:0 0 64%;border-right:2px solid #000}
-  .fraisband{background:#fdeada;border-bottom:1px solid #000;text-align:center;font-weight:700;height:18px;line-height:18px}
-  table{width:100%;border-collapse:collapse;table-layout:fixed}
-  table.fr th,table.fr td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-  table.fr th{background:#fdeada;font-style:italic;font-size:10px;height:30px;white-space:normal;line-height:1.05;vertical-align:middle}
-  table.fr td{background:#fdeada}
-  table.fr th:last-child,table.fr td:last-child{border-right:none}
-  table.fr th:nth-child(1),table.fr td:nth-child(1){width:11%}
-  table.fr th:nth-child(2),table.fr td:nth-child(2){width:18%}
-  table.fr th:nth-child(3),table.fr td:nth-child(3){width:31%}
-  table.fr th:nth-child(4),table.fr td:nth-child(4){width:9%}
-  table.fr th:nth-child(5),table.fr td:nth-child(5){width:9%}
-  table.fr th:nth-child(6),table.fr td:nth-child(6){width:9%}
-  table.fr th:nth-child(7),table.fr td:nth-child(7){width:13%}
-  .num{text-align:right;font-variant-numeric:tabular-nums}
-  .right{flex:1}
-  table.km th,table.km td{border-right:1px solid #000;border-bottom:1px solid #000;padding:1px 5px;height:18px;overflow:hidden;white-space:nowrap}
-  table.km th{background:#dddddd;font-style:italic;font-size:10px;height:48px;vertical-align:middle}
-  table.km td{background:#dddddd}
-  table.km th:last-child,table.km td:last-child{border-right:none}
-  table.km th:nth-child(1),table.km td:nth-child(1){width:30%}
-  table.km th:nth-child(2),table.km td:nth-child(2){width:30%}
-  table.km th:nth-child(3),table.km td:nth-child(3){width:18%}
-  table.km th:nth-child(4),table.km td:nth-child(4){width:22%}
-  table.km .ktot td{background:#dddddd;font-weight:700;text-align:left}
-  table.km .ktot td.num,table.km .ttot td.num{text-align:right}
-  table.km .ttot td{background:#fdeada;font-weight:700;text-align:left}
-  .footrow{display:flex;border-top:2px solid #000}
-  .fleft{flex:0 0 64%;display:flex;border-right:2px solid #000}
-  .fleft .fcell{flex:1;border-right:1px solid #000;padding:5px 9px;min-height:50px;font-style:italic}
-  .fleft .fcell:last-child{border-right:none}
-  .gen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
-  .gen .k{font-weight:700;font-size:13px;color:#000;font-style:normal;text-decoration:none}
-  .gen .genv{font-weight:700;font-style:italic;text-decoration:underline;font-size:16px;font-family:ui-monospace,Menlo,monospace}
-  .ref{font-size:8px;color:#555;padding:5px 2px 0;font-family:ui-monospace,Menlo,monospace}
-  @media print{.bar{display:none}.page{margin:0;padding:0;max-width:none}body{background:#fff}@page{size:A4 landscape;margin:8mm}}
+  .page{background:#fff;width:1148px;margin:16px auto;padding:0}
+  .tj{display:flex;width:1148px;border:2px solid #000;background:#fff}
+  /* Bande verticale : TWINJET 36pt / PERSONNEL NAVIGANT 26pt, gras italique */
+  .spine{width:97px;border-right:2px solid #000;position:relative}
+  .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;display:flex;align-items:baseline;gap:34px}
+  .st{font-size:48px;font-weight:bold;font-style:italic;letter-spacing:1px}
+  .ss{font-size:35px;font-weight:bold;font-style:italic;letter-spacing:.5px}
+  .main{width:1047px}
+  /* R2 : Arial 14 gras italique, centré, AUCUN séparateur vertical */
+  .hdr{display:flex;height:29px;border-bottom:2px solid #000;font-size:19px;font-weight:bold;font-style:italic}
+  .hdr div{display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap}
+  /* Catégories : Arial 12 gras, cases = cellules bordées, zone ouverte sans traits */
+  .zcats{position:relative;height:63px;border-bottom:2px solid #000}
+  .crow{position:absolute;left:0;right:0;height:19px}
+  .cg{position:absolute;display:flex;align-items:center;gap:4px;height:19px;font-size:16px}
+  .cg b{font-weight:bold}
+  .cb{width:29px;height:19px;border:2px solid #000;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;flex:none}
+  .u8{font-size:11px;font-weight:bold;font-style:italic;text-decoration:underline}
+  .eqbox{position:absolute;right:0;top:8px;width:162px;height:46px;border:1px solid #000;padding:2px 5px;font-size:15px;font-weight:bold}
+  .eqbox .u8{font-size:15px;font-style:normal}
+  /* R8 : Objet Arial 16 ; petits titres Arial 8 soulignés, haut-gauche */
+  .zobj{display:flex;height:37px}
+  .ob{width:740px;border-bottom:2px solid #000;border-right:2px solid #000;padding:1px 5px;position:relative;overflow:hidden}
+  .olab{font-size:21px;font-weight:bold;font-style:italic;text-decoration:underline}
+  .oval{font-size:21px;font-weight:bold;font-style:italic}
+  .dev{position:absolute;left:435px;top:2px}
+  .ve{width:209px;border-bottom:1px solid #000;border-right:1px solid #000;padding:1px 5px}
+  .ika{width:98px;border-bottom:1px solid #000;padding:1px 5px}
+  .vv{font-size:14px;font-style:italic}
+  /* Corps */
+  .zbody{display:flex}
+  .fl{width:740px;border-right:2px solid #000}
+  .fband{height:24px;background:#FDEADA;border-bottom:2px solid #000;text-align:center;font-weight:bold;font-size:16px;line-height:21px}
+  table{border-collapse:collapse;table-layout:fixed}
+  .tfr{width:738px}
+  .tfr th{height:35px;background:#FDEADA;font-size:13px;font-weight:bold;font-style:italic;border-right:1px solid #000;border-bottom:2px solid #000;text-align:center;vertical-align:middle;padding:0 2px}
+  .tfr th.w2{white-space:normal;line-height:1.05}
+  .tfr th:last-child{border-right:none}
+  .tfr td{height:24px;background:#FDEADA;font-size:16px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 3px}
+  .tfr td:last-child{border-right:none}
+  .tfr tr:last-child td{border-bottom:none}
+  .kr{width:307px}
+  .tkm{width:307px}
+  .tkm th{height:59px;background:#DDDDDD;font-size:13px;font-weight:bold;font-style:italic;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;padding:0 2px}
+  .tkm th:last-child{border-right:none}
+  .tkm td{height:24px;background:#DDDDDD;font-size:16px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;padding:0 3px}
+  .tkm td:last-child{border-right:none}
+  .tkm td.rt{text-align:right;padding-right:6px}
+  .tkm .ktot td{font-weight:bold;font-size:13px}
+  .tkm .ktot td.tv,.tkm .ttot td.tv{font-size:16px;font-weight:bold;font-style:italic;text-align:right;padding-right:6px}
+  .tkm .ttot td{background:#FDEADA;font-weight:bold;font-size:13px;border-top:2px solid #000}
+  .tkm tr:last-child td{border-bottom:none}
+  /* Bas : libellés Arial 8 soulignés haut-gauche ; TOTAL GENERAL 12 / valeur 14 soulignée */
+  .zfoot{display:flex;height:55px;border-top:2px solid #000}
+  .fc{border-right:2px solid #000;padding:2px 5px}
+  .tg{border-right:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold}
+  .tgv{display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:bold;font-style:italic;text-decoration:underline}
+  .ref{font-size:10px;padding:4px 2px 0;color:#000}
+  @media print{.bar{display:none}.page{margin:0}body{background:#fff;zoom:.93}@page{size:A4 landscape;margin:6mm}}
 `;}
 
 function openOrDownload(inner,fname){
@@ -656,16 +644,16 @@ async function generatePDF(id){
   // Repli si les librairies ne sont pas présentes (ex. fichier autonome) : ancienne voie impression
   if(!(window.jspdf && window.html2canvas)){ openOrDownload(inner, fname.replace(/\.pdf$/,".html")); return; }
   const ifr=document.createElement("iframe");
-  ifr.style.cssText="position:fixed;left:-99999px;top:0;width:1123px;height:1300px;border:0;background:#fff";
+  ifr.style.cssText="position:fixed;left:-99999px;top:0;width:1170px;height:1400px;border:0;background:#fff";
   document.body.appendChild(ifr);
   try{
     const d=ifr.contentDocument;
     d.open();
-    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pdfCSS()} body{background:#fff;margin:0} .page{margin:0;max-width:none;padding:0;width:1123px}</style></head><body><div class="page">${inner}</div></body></html>`);
+    d.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${pdfCSS()} body{background:#fff;margin:0} .page{margin:0;max-width:none;padding:0;width:1148px}</style></head><body><div class="page">${inner}</div></body></html>`);
     d.close();
     await new Promise(r=>setTimeout(r,350));
     const el=d.querySelector(".page");
-    const canvas=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false,width:el.scrollWidth,height:el.scrollHeight,windowWidth:1123});
+    const canvas=await window.html2canvas(el,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false,width:el.scrollWidth,height:el.scrollHeight,windowWidth:1148});
     const JS=window.jspdf.jsPDF;
     const pdf=new JS({orientation:"landscape",unit:"mm",format:"a4"});
     const pw=pdf.internal.pageSize.getWidth(), ph=pdf.internal.pageSize.getHeight();
