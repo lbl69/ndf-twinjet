@@ -177,6 +177,7 @@ let view={page:"home",noteId:null};
 const uid=()=>Math.random().toString(36).slice(2,10);
 const eur=n=>(n==null||isNaN(n)?"—":Number(n).toFixed(2).replace(".",",")+" €");
 const num2=n=>Number(n||0).toFixed(2).replace(".",",");
+const numIK=n=>{const v=Number(n||0);let s=(Math.round(v*1000)/1000).toFixed(3);if(s.endsWith("0"))s=s.slice(0,-1);return s.replace(".",",");};
 const todayStr=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;};
 const monthNow=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const monthLabel=m=>{if(!m)return"";const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});};
@@ -315,7 +316,7 @@ function expHTML(e){
 function kmHTML(k){
   return `<div class="exp" onclick="openKm('${k.id}')"><div class="d">
     <div class="t">${esc(k.depart||"")} → ${esc(k.arrivee||"")}</div>
-    <div class="m">${num2(k.nbkm)} km · ${num2(k.taux||state.id.ik)} €/km</div></div>
+    <div class="m">${num2(k.nbkm)} km · ${numIK(k.taux||state.id.ik)} €/km</div></div>
     <div class="v">${eur(kmTotal(k))}</div></div>`;
 }
 
@@ -487,7 +488,7 @@ function buildSheet(id){
   km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="tv">${num2(tTTC)}</td></tr>`;
   const cb=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>`;
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
-  const taux=kms[0]?num2(kms[0].taux||i.ik):"";
+  const taux=kms[0]?numIK(kms[0].taux||i.ik):"";
 
   const inner=`<div class="tj">
    <div class="spine"><div class="rot"><span class="st">TWINJET</span><span class="ss">PERSONNEL NAVIGANT</span></div></div>
