@@ -181,6 +181,8 @@ const numIK=n=>{const v=Number(n||0);let s=(Math.round(v*1000)/1000).toFixed(3);
 const todayStr=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;};
 const monthNow=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const monthLabel=m=>{if(!m)return"";const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});};
+/* Clé de tri pour une date "JJ/MM/AA" -> "AAAA-MM-JJ" (comparable). Vide si non reconnue. */
+const dateKey=s=>{const m=/^\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*$/.exec(s||"");if(!m)return"";let y=m[3];if(y.length===2)y="20"+y;return y+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");};
 
 /* ===== Stockage : window.storage si dispo (dans Claude), sinon localStorage (hors ligne) ===== */
 const Store={
@@ -238,7 +240,12 @@ function kmTotal(k){return (Number(k.nbkm)||0)*(Number(k.taux)||state.id.ik||IK_
 function totTTC(id){return noteExps(id).reduce((s,e)=>s+effTTC(e),0);}
 function totKM(id){return noteKms(id).reduce((s,k)=>s+kmTotal(k),0);}
 function totGen(id){return totTTC(id)+totKM(id);}
-function splitHT(ttc,tva){const ht=ttc/(1+(Number(tva)||0)/100);return{ht,tva:ttc-ht};}
+/* Répartition HT / TVA d'une dépense : soit par taux %, soit par montant de TVA saisi à la main. */
+function expTVAsplit(e){
+  const ttc=effTTC(e);
+  if(e.tvaManuel){let tv=Number(e.tvaMontant)||0;if(tv<0)tv=0;if(tv>ttc)tv=ttc;return{ht:ttc-tv,tva:tv};}
+  const ht=ttc/(1+(Number(e.tva)||0)/100);return{ht,tva:ttc-ht};
+}
 
 const app=document.getElementById("app");
 function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -246,7 +253,7 @@ function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;",
 /* ===== Home ===== */
 function render(){
   if(view.page==="detail"){renderDetail();return;}
-  const m=state.notes.filter(n=>n.type==="mission").sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const m=state.notes.filter(n=>n.type==="mission").sort((a,b)=>dateKey(b.date).localeCompare(dateKey(a.date)));
   const l=state.notes.filter(n=>n.type==="ligne").sort((a,b)=>(b.mois||"").localeCompare(a.mois||""));
   app.innerHTML=`
     <header>
@@ -278,7 +285,7 @@ function stripHTML(n){
 function renderDetail(){
   const n=state.notes.find(x=>x.id===view.noteId);
   if(!n){return goHome();}
-  const list=noteExps(n.id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const list=noteExps(n.id).sort((a,b)=>dateKey(a.date).localeCompare(dateKey(b.date)));
   const kms=noteKms(n.id);
   const head=n.titre||(n.type==="mission"?(n.vol||"Vol"):(n.libelle||"Ligne"));
   const sub=n.type==="mission"?`${esc(n.date||"")} · ${esc(n.categorie||"")}`:`${esc(monthLabel(n.mois))} · ${esc(n.categorie||"")}`;
@@ -310,7 +317,7 @@ function expHTML(e){
   const tags=(e.repas?`<span class="pill">REPAS ×${e.couverts||1}</span>`:"")+((Number(e.tiers)||0)>0?`<span class="pill t">TIERS ${num2(e.tiers)}</span>`:"");
   return `<div class="exp" onclick="openExp('${e.id}')"><div class="d">
     <div class="t">${esc(e.fournisseur||"—")} ${tags}</div>
-    <div class="m">${esc(e.date||"")} · ${esc(e.libelle||"")} · TVA ${String(e.tva).replace(".",",")}%</div></div>
+    <div class="m">${esc(e.date||"")} · ${esc(e.libelle||"")} · TVA ${e.tvaManuel?eur(e.tvaMontant):(String(e.tva).replace(".",",")+" %")}</div></div>
     <div class="v">${eur(effTTC(e))}${capped?`<span class="cap">plafonné · <s>${eur(e.ttc)}</s></span>`:""}</div></div>`;
 }
 function kmHTML(k){
@@ -394,10 +401,12 @@ function delNote(id){if(!confirm("Supprimer cette note, ses dépenses et ses km 
   state.kms=state.kms.filter(k=>k.noteId!==id);save();goHome();}
 
 /* ---- Dépense ---- */
-let expRepas=false,expTva=20;
+let expRepas=false,expTva=20,expTvaManuel=false;
 function openExp(id){
   const e=id?state.exps.find(x=>x.id===id):null;
-  expRepas=e?!!e.repas:false;expTva=e?e.tva:20;
+  expRepas=e?!!e.repas:false;
+  expTva=(e&&e.tva!=null)?e.tva:20;
+  expTvaManuel=e?!!e.tvaManuel:false;
   modal(`<h3>${e?"Modifier la dépense":"Nouvelle dépense"}</h3>
     <div class="row2"><div><label class="f">Date</label><input id="e_date" placeholder="JJ/MM/AA" value="${esc(e?.date||todayStr())}"></div>
     <div><label class="f">Montant TTC €</label><input id="e_ttc" inputmode="decimal" placeholder="0,00" value="${e?String(e.ttc).replace('.',','):""}"></div></div>
@@ -408,22 +417,36 @@ function openExp(id){
       <button class="${!expRepas?'on':''}" onclick="setRepas(false)">Standard</button>
       <button class="${expRepas?'on':''}" onclick="setRepas(true)">🍽 Repas (plafonné)</button></div>
     <div id="e_repasbox"></div>
-    <div class="row2"><div><label class="f">TVA %</label>
-      <select id="e_tva">${TVA_PRESETS.map(t=>`<option value="${t}" ${expTva==t?'selected':''}>${String(t).replace('.',',')} %</option>`).join("")}</select></div>
-    <div><label class="f">Dont tiers €</label><input id="e_tiers" inputmode="decimal" placeholder="0,00" value="${e&&e.tiers?String(e.tiers).replace('.',','):""}"></div></div>
+    <label class="f">TVA</label>
+    <div class="toggle" id="e_tvamode">
+      <button class="${!expTvaManuel?'on':''}" onclick="setTvaMode(false)">Taux %</button>
+      <button class="${expTvaManuel?'on':''}" onclick="setTvaMode(true)">Montant €</button></div>
+    <div class="row2">
+      <div id="e_tvabox"></div>
+      <div><label class="f">Dont tiers €</label><input id="e_tiers" inputmode="decimal" placeholder="0,00" value="${e&&e.tiers?String(e.tiers).replace('.',','):""}"></div></div>
     <div id="e_warn"></div>
     <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
     <button class="btn amber" onclick="saveExp('${id||""}')">Enregistrer</button></div>
     ${e?`<button class="btn red" style="margin-top:10px" onclick="delExp('${id}')">Supprimer</button>`:""}`);
-  renderRepasBox(e);updateWarn();
+  renderRepasBox(e);renderTvaBox(e);updateWarn();
   document.getElementById("e_ttc").addEventListener("input",updateWarn);
 }
 function setRepas(v){expRepas=v;
   document.querySelectorAll("#e_type button").forEach((b,i)=>b.classList.toggle("on",(i===1)===v));
-  if(v)document.getElementById("e_tva").value=10;
+  if(v&&!expTvaManuel){expTva=10;const sel=document.getElementById("e_tva");if(sel)sel.value=10;}
   renderRepasBox(null);updateWarn();}
 function renderRepasBox(e){const box=document.getElementById("e_repasbox");
   box.innerHTML=expRepas?`<label class="f">Nombre de couverts</label><input id="e_couv" inputmode="numeric" value="${e?.couverts||1}" oninput="updateWarn()">`:"";}
+function setTvaMode(v){expTvaManuel=v;
+  document.querySelectorAll("#e_tvamode button").forEach((b,i)=>b.classList.toggle("on",(i===1)===v));
+  renderTvaBox(null);}
+function renderTvaBox(e){const box=document.getElementById("e_tvabox");if(!box)return;
+  if(expTvaManuel){
+    const v=(e&&e.tvaManuel&&e.tvaMontant!=null)?String(e.tvaMontant).replace(".",","):"";
+    box.innerHTML=`<label class="f">Montant TVA €</label><input id="e_tva_eur" inputmode="decimal" placeholder="0,00" value="${v}">`;
+  }else{
+    box.innerHTML=`<label class="f">Taux %</label><select id="e_tva">${TVA_PRESETS.map(t=>`<option value="${t}" ${expTva==t?'selected':''}>${String(t).replace('.',',')} %</option>`).join("")}</select>`;
+  }}
 function updateWarn(){const w=document.getElementById("e_warn");if(!w)return;
   const ttc=fnum("e_ttc");
   if(expRepas){const couv=parseInt((document.getElementById("e_couv")?.value)||"1")||1;
@@ -432,8 +455,11 @@ function updateWarn(){const w=document.getElementById("e_warn");if(!w)return;
   w.innerHTML="";}
 function saveExp(id){
   const o={noteId:view.noteId,date:val("e_date"),ttc:fnum("e_ttc"),fournisseur:val("e_four"),libelle:val("e_lib"),
-    tva:parseFloat(document.getElementById("e_tva").value),repas:expRepas,
-    couverts:expRepas?(parseInt(document.getElementById("e_couv").value)||1):1,tiers:fnum("e_tiers")};
+    repas:expRepas,
+    couverts:expRepas?(parseInt(document.getElementById("e_couv").value)||1):1,tiers:fnum("e_tiers"),
+    tvaManuel:expTvaManuel,
+    tva:expTvaManuel?null:(parseFloat(val("e_tva"))||0),
+    tvaMontant:expTvaManuel?fnum("e_tva_eur"):0};
   if(id)Object.assign(state.exps.find(x=>x.id===id),o);else state.exps.push({id:uid(),...o});
   save();closeModal();render();}
 function delExp(id){state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();}
@@ -463,10 +489,10 @@ function delKm(id){state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();
 /* ===== Impression — calque formulaire officiel ===== */
 function buildSheet(id){
   const n=state.notes.find(x=>x.id===id);const i=state.id;
-  const list=noteExps(id).sort((a,b)=>(a.date||"").localeCompare(b.date||""));
+  const list=noteExps(id).sort((a,b)=>dateKey(a.date).localeCompare(dateKey(b.date)));
   const kms=noteKms(id);
   let tHT=0,tTVA=0,tTTC=0,tTiers=0;
-  list.forEach(e=>{const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;});
+  list.forEach(e=>{const ttc=effTTC(e);const{ht,tva}=expTVAsplit(e);tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;});
   const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
   /* Original : 24 rangées frais (11..34), 22 rangées km (11..32) + 2 totaux */
@@ -474,7 +500,7 @@ function buildSheet(id){
   const KR=FR-2;
   let fr="";
   for(let r=0;r<FR;r++){const e=list[r];
-    if(e){const ttc=effTTC(e);const{ht,tva}=splitHT(ttc,e.tva);
+    if(e){const ttc=effTTC(e);const{ht,tva}=expTVAsplit(e);
       const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
       fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td><td>${num2(ht)}</td><td>${num2(tva)}</td><td>${num2(ttc)}</td><td>${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
     } else fr+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
@@ -670,7 +696,13 @@ async function generatePDF(id){
 
 /* PWA : service worker pour le hors ligne (uniquement en contexte sécurisé) */
 if("serviceWorker" in navigator && location.protocol==="https:"){
+  const swHadController=!!navigator.serviceWorker.controller;
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+  /* Quand une NOUVELLE version prend la main (pas la 1re installation), on recharge une seule fois. */
+  let swReloaded=false;
+  navigator.serviceWorker.addEventListener("controllerchange",()=>{
+    if(swReloaded||!swHadController)return;swReloaded=true;location.reload();
+  });
 }
 </script>
 </body>
