@@ -163,6 +163,7 @@
 
 <script>
 /* ===== Constantes ===== */
+const APP_VERSION="2026-09-03";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
 const CAP_DEFAULT=21.50;
 const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
 const TVA_PRESETS=[20,10,5.5,2.1,0];
@@ -352,8 +353,25 @@ function openId(){const i=state.id;
       <button class="btn ghost" onclick="exportData()">Exporter (.json)</button>
       <label class="btn ghost" style="cursor:pointer">Importer<input type="file" accept="application/json,.json" style="display:none" onchange="importData(this)"></label>
     </div>
+    <label class="f">Application</label>
+    <button class="btn ghost" id="btnUpd" onclick="forceUpdate(this)">↻ Mettre à jour</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'IBM Plex Mono',monospace">
+      Version installée : <span style="color:var(--cyan)">${esc(APP_VERSION)}</span><br>
+      Récupère la dernière version publiée puis recharge l'app. Tes notes ne sont pas touchées.
+    </div>
     <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
     <button class="btn amber" onclick="saveId()">Enregistrer</button></div>`);}
+async function forceUpdate(btn){
+  if(btn){btn.disabled=true;btn.textContent="Mise à jour…";}
+  try{
+    if("serviceWorker" in navigator){
+      const reg=await navigator.serviceWorker.getRegistration();
+      if(reg)await reg.update();  /* re-vérifie sw.js ; s'il a changé, le nouveau SW s'active et recharge seul */
+    }
+  }catch(e){}
+  /* HTML/JS en « réseau d'abord » : un simple rechargement récupère la dernière version publiée. */
+  setTimeout(()=>location.reload(),400);
+}
 function saveId(){state.id.nom=val("i_nom");state.id.fonction=val("i_fct");state.id.trigramme=val("i_tri");
   state.id.base=val("i_base");state.id.cap=fnum("i_cap")||CAP_DEFAULT;state.id.ik=fnum("i_ik")||IK_DEFAULT;
   save();closeModal();render();}
