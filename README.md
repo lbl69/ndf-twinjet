@@ -4,8 +4,12 @@ Notes de frais Twin Jet : saisie manuelle rapide (par mission/vol ou mensuelle p
 calculs HT/TVA/TTC, plafond repas par couvert, indemnités km, et génération d'une note
 **calquée sur le formulaire officiel** prête à imprimer / enregistrer en PDF.
 
-- 100 % côté navigateur, **aucune donnée envoyée** (tout reste dans le stockage local de l'appareil).
-- Fonctionne **hors ligne** une fois la page chargée (service worker).
+- 100 % côté navigateur, **données personnelles jamais envoyées** (tout reste dans le stockage local de l'appareil).
+- **Devises étrangères** : à la saisie d'une dépense, on choisit la devise ; l'app interroge
+  `api.frankfurter.dev` (taux de référence BCE) avec seulement le code devise + la date — aucun
+  montant, aucun nom. Hors ligne ou devise hors BCE (AED, MAD, TND…) : saisie manuelle du taux.
+  Le total final et les colonnes HT/TVA/TTC sont toujours en euros.
+- Fonctionne **hors ligne** une fois la page chargée (service worker), sauf la récupération auto des taux.
 - Installable sur l'écran d'accueil (PWA).
 
 ## Déployer sur GitHub Pages

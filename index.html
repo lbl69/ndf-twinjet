@@ -163,11 +163,16 @@
 
 <script>
 /* ===== Constantes ===== */
-const APP_VERSION="2026-09-03";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
+const APP_VERSION="2026-09-05";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
 const CAP_DEFAULT=21.50;
 const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
 const TVA_PRESETS=[20,10,5.5,2.1,0];
 const IK_DEFAULT=0.636;
+/* Devises étrangères : taux vers EUR récupéré auprès de la BCE (Frankfurter). Repli = saisie manuelle. */
+const CURRENCIES=["EUR","USD","GBP","CHF","CAD","AUD","JPY","SEK","NOK","DKK","PLN","CZK","HUF","RON","BGN","TRY","ILS","CNY","ZAR","SGD","HKD","INR","THB","NZD","AED","MAD","TND"];
+const FX_HOSTS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
+/* Devises cotées par la BCE (taux auto). Les autres (AED, MAD, TND…) : saisie manuelle du taux. */
+const FX_ECB=new Set("USD GBP CHF CAD AUD JPY SEK NOK DKK PLN CZK HUF RON BGN TRY ILS CNY ZAR SGD HKD INR THB NZD".split(" "));
 
 let state={
   id:{nom:"BLOUDEAU Loris",fonction:"CDB",trigramme:"BLC",base:"LFLL",cap:CAP_DEFAULT,ik:IK_DEFAULT},
@@ -179,11 +184,34 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const eur=n=>(n==null||isNaN(n)?"—":Number(n).toFixed(2).replace(".",",")+" €");
 const num2=n=>Number(n||0).toFixed(2).replace(".",",");
 const numIK=n=>{const v=Number(n||0);let s=(Math.round(v*1000)/1000).toFixed(3);if(s.endsWith("0"))s=s.slice(0,-1);return s.replace(".",",");};
+const numFx=n=>{const v=Number(n||0);if(!v)return"0";let s=v.toFixed(6).replace(/0+$/,"").replace(/\.$/,"");return s.replace(".",",");};
+const isoToFr=d=>{d=String(d||"");return d.length>=10?`${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(2,4)}`:"";};
 const todayStr=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;};
 const monthNow=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const monthLabel=m=>{if(!m)return"";const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});};
 /* Clé de tri pour une date "JJ/MM/AA" -> "AAAA-MM-JJ" (comparable). Vide si non reconnue. */
 const dateKey=s=>{const m=/^\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*$/.exec(s||"");if(!m)return"";let y=m[3];if(y.length===2)y="20"+y;return y+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");};
+
+/* Taux de change : 1 unité de `cur` = N EUR, à la date donnée (sinon au jour même). Source BCE. */
+async function fetchFxToEUR(cur,dateStr){
+  cur=(cur||"EUR").toUpperCase();
+  if(cur==="EUR")return{rate:1,date:""};
+  if(!FX_ECB.has(cur))throw new Error("devise hors BCE — saisie manuelle");
+  const k=dateKey(dateStr),today=new Date().toISOString().slice(0,10);
+  const seg=(k&&k<today)?k:"latest";
+  let lastErr;
+  for(const h of FX_HOSTS){
+    try{
+      const r=await fetch(`${h}/${seg}?base=${cur}&symbols=EUR&from=${cur}&to=EUR`,{cache:"no-store"});
+      if(!r.ok){lastErr=new Error("HTTP "+r.status);continue;}
+      const j=await r.json();
+      const rate=j&&j.rates&&j.rates.EUR;
+      if(rate)return{rate:Number(rate),date:isoToFr(j.date)};
+      lastErr=new Error("taux EUR absent (devise hors BCE ?)");
+    }catch(e){lastErr=e;}
+  }
+  throw lastErr||new Error("indisponible");
+}
 
 /* ===== Stockage : window.storage si dispo (dans Claude), sinon localStorage (hors ligne) ===== */
 const Store={
@@ -315,10 +343,12 @@ function renderDetail(){
 }
 function expHTML(e){
   const capped=isCapped(e);
-  const tags=(e.repas?`<span class="pill">REPAS ×${e.couverts||1}</span>`:"")+((Number(e.tiers)||0)>0?`<span class="pill t">TIERS ${num2(e.tiers)}</span>`:"");
+  const tags=(e.repas?`<span class="pill">REPAS ×${e.couverts||1}</span>`:"")+((Number(e.tiers)||0)>0?`<span class="pill t">TIERS ${num2(e.tiers)}</span>`:"")
+    +((e.cur&&e.cur!=="EUR")?`<span class="pill t">${esc(e.cur)}</span>`:"");
+  const fxNote=(e.cur&&e.cur!=="EUR")?` · ${esc(e.cur)} ${num2(e.curTTC!=null?e.curTTC:(e.fx?e.ttc/e.fx:0))} × ${numFx(e.fx)}`:"";
   return `<div class="exp" onclick="openExp('${e.id}')"><div class="d">
     <div class="t">${esc(e.fournisseur||"—")} ${tags}</div>
-    <div class="m">${esc(e.date||"")} · ${esc(e.libelle||"")} · TVA ${e.tvaManuel?eur(e.tvaMontant):(String(e.tva).replace(".",",")+" %")}</div></div>
+    <div class="m">${esc(e.date||"")} · ${esc(e.libelle||"")}${fxNote} · TVA ${e.tvaManuel?eur(e.tvaMontant):(String(e.tva).replace(".",",")+" %")}</div></div>
     <div class="v">${eur(effTTC(e))}${capped?`<span class="cap">plafonné · <s>${eur(e.ttc)}</s></span>`:""}</div></div>`;
 }
 function kmHTML(k){
@@ -420,14 +450,24 @@ function delNote(id){if(!confirm("Supprimer cette note, ses dépenses et ses km 
 
 /* ---- Dépense ---- */
 let expRepas=false,expTva=20,expTvaManuel=false;
+let expCur="EUR",expFx=1,expFxDate="",expFxManual=false;
 function openExp(id){
   const e=id?state.exps.find(x=>x.id===id):null;
   expRepas=e?!!e.repas:false;
   expTva=(e&&e.tva!=null)?e.tva:20;
   expTvaManuel=e?!!e.tvaManuel:false;
+  expCur=(e&&e.cur)?e.cur:"EUR";
+  expFx=(e&&e.fx)?Number(e.fx):1;
+  expFxDate=(e&&e.fxDate)?e.fxDate:"";
+  expFxManual=!!(e&&e.cur&&e.cur!=="EUR"&&!e.fxDate);
   modal(`<h3>${e?"Modifier la dépense":"Nouvelle dépense"}</h3>
-    <div class="row2"><div><label class="f">Date</label><input id="e_date" placeholder="JJ/MM/AA" value="${esc(e?.date||todayStr())}"></div>
-    <div><label class="f">Montant TTC €</label><input id="e_ttc" inputmode="decimal" placeholder="0,00" value="${e?String(e.ttc).replace('.',','):""}"></div></div>
+    <div class="row2"><div><label class="f">Date</label><input id="e_date" placeholder="JJ/MM/AA" value="${esc(e?.date||todayStr())}" onchange="fxDateChanged()"></div>
+    <div><label class="f">Devise</label>
+      <select id="e_cur" onchange="onCurChange()">${CURRENCIES.map(c=>`<option ${expCur===c?'selected':''}>${c}</option>`).join("")}</select></div></div>
+    <div class="row2"><div><label class="f" id="e_ttc_lbl">Montant TTC ${expCur==='EUR'?'€':'('+esc(expCur)+')'}</label>
+      <input id="e_ttc" inputmode="decimal" placeholder="0,00" value="${e?String(e.cur&&e.cur!=='EUR'?(e.curTTC!=null?e.curTTC:e.ttc):e.ttc).replace('.',','):""}" oninput="updateFxInfo();updateWarn()"></div>
+      <div id="e_fxcell"></div></div>
+    <div id="e_fxinfo" style="font-size:11px;color:var(--muted);margin-top:6px;font-family:'IBM Plex Mono',monospace;min-height:14px"></div>
     <label class="f">Fournisseur</label><input id="e_four" placeholder="Lagardère, Total, La Poste…" value="${esc(e?.fournisseur||"")}">
     <label class="f">Libellé</label><input id="e_lib" placeholder="Repas équipage, journaux…" value="${esc(e?.libelle||"")}">
     <label class="f">Type</label>
@@ -446,8 +486,48 @@ function openExp(id){
     <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
     <button class="btn amber" onclick="saveExp('${id||""}')">Enregistrer</button></div>
     ${e?`<button class="btn red" style="margin-top:10px" onclick="delExp('${id}')">Supprimer</button>`:""}`);
-  renderRepasBox(e);renderTvaBox(e);updateWarn();
-  document.getElementById("e_ttc").addEventListener("input",updateWarn);
+  renderRepasBox(e);renderTvaBox(e);renderFxCell(e);updateFxInfo();updateWarn();
+}
+function fxDateChanged(){ if(expCur!=="EUR") refreshFx(); }
+function onCurChange(){
+  expCur=(document.getElementById("e_cur")||{}).value||"EUR";
+  const lbl=document.getElementById("e_ttc_lbl");
+  if(lbl)lbl.textContent="Montant TTC "+(expCur==="EUR"?"€":"("+expCur+")");
+  if(expCur==="EUR"){expFx=1;expFxDate="";expFxManual=false;}
+  renderFxCell(null);
+  if(expCur!=="EUR")refreshFx(); else updateFxInfo();
+  updateWarn();
+}
+function renderFxCell(e){
+  const box=document.getElementById("e_fxcell");if(!box)return;
+  if(expCur==="EUR"){box.innerHTML="";return;}
+  const v=(expFx&&expFx!==1)?numFx(expFx):"";
+  box.innerHTML=`<label class="f">Taux &rarr; EUR <button type="button" onclick="refreshFx()" style="background:none;border:none;color:var(--cyan);cursor:pointer;font-size:13px;padding:0 4px">&#8635;</button></label>`
+    +`<input id="e_fx" inputmode="decimal" placeholder="0,000000" value="${v}" oninput="expFxManual=true;expFxDate='';expFx=parseFloat(this.value.replace(',','.'))||0;updateFxInfo();updateWarn()">`;
+}
+async function refreshFx(){
+  if(expCur==="EUR"){expFx=1;expFxDate="";updateFxInfo();return;}
+  const info=document.getElementById("e_fxinfo");
+  if(info)info.textContent="Récupération du taux BCE…";
+  try{
+    const {rate,date}=await fetchFxToEUR(expCur,val("e_date"));
+    expFx=rate;expFxDate=date;expFxManual=false;
+    const fxEl=document.getElementById("e_fx");if(fxEl)fxEl.value=numFx(rate);
+  }catch(err){
+    expFxManual=true;
+    if(!expFx||expFx===1)expFx=0;
+  }
+  updateFxInfo();updateWarn();
+}
+function updateFxInfo(){
+  const info=document.getElementById("e_fxinfo");if(!info)return;
+  if(expCur==="EUR"){info.textContent="";return;}
+  const eurv=fnum("e_ttc")*(expFx||0);
+  let src;
+  if(!expFx)src='<span style="color:var(--amber)">⚠ saisis le taux de change</span>';
+  else if(expFxManual||!expFxDate)src="taux saisi manuellement";
+  else src="taux BCE du "+expFxDate;
+  info.innerHTML=`≈ <b style="color:var(--txt)">${eur(eurv)}</b> · ${src}`;
 }
 function setRepas(v){expRepas=v;
   document.querySelectorAll("#e_type button").forEach((b,i)=>b.classList.toggle("on",(i===1)===v));
@@ -466,18 +546,23 @@ function renderTvaBox(e){const box=document.getElementById("e_tvabox");if(!box)r
     box.innerHTML=`<label class="f">Taux %</label><select id="e_tva">${TVA_PRESETS.map(t=>`<option value="${t}" ${expTva==t?'selected':''}>${String(t).replace('.',',')} %</option>`).join("")}</select>`;
   }}
 function updateWarn(){const w=document.getElementById("e_warn");if(!w)return;
-  const ttc=fnum("e_ttc");
+  const ttc=fnum("e_ttc")*(expCur==="EUR"?1:(expFx||0));
   if(expRepas){const couv=parseInt((document.getElementById("e_couv")?.value)||"1")||1;
     const cap=(state.id.cap||CAP_DEFAULT)*couv;
     if(ttc>cap){w.innerHTML=`<div class="warn">Plafond ${eur(cap)} (${couv}×${eur(state.id.cap)}). Remboursé ${eur(cap)}, reste ${eur(ttc-cap)} à ta charge.</div>`;return;}}
   w.innerHTML="";}
 function saveExp(id){
-  const o={noteId:view.noteId,date:val("e_date"),ttc:fnum("e_ttc"),fournisseur:val("e_four"),libelle:val("e_lib"),
+  const cur=expCur||"EUR";
+  const amt=fnum("e_ttc");                                   /* montant tel qu'écrit sur le ticket */
+  const fx=cur==="EUR"?1:(expFx||0);                          /* 1 unité de `cur` = fx EUR */
+  const ttcEUR=cur==="EUR"?amt:Math.round(amt*fx*100)/100;    /* stocké en EUR : tous les calculs restent en euro */
+  const o={noteId:view.noteId,date:val("e_date"),ttc:ttcEUR,fournisseur:val("e_four"),libelle:val("e_lib"),
     repas:expRepas,
     couverts:expRepas?(parseInt(document.getElementById("e_couv").value)||1):1,tiers:fnum("e_tiers"),
     tvaManuel:expTvaManuel,
     tva:expTvaManuel?null:(parseFloat(val("e_tva"))||0),
-    tvaMontant:expTvaManuel?fnum("e_tva_eur"):0};
+    tvaMontant:expTvaManuel?fnum("e_tva_eur"):0,
+    cur:cur,fx:fx,fxDate:cur==="EUR"?"":(expFxManual?"":expFxDate),curTTC:cur==="EUR"?null:amt};
   if(id)Object.assign(state.exps.find(x=>x.id===id),o);else state.exps.push({id:uid(),...o});
   save();closeModal();render();}
 function delExp(id){state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();}
@@ -519,7 +604,8 @@ function buildSheet(id){
   let fr="";
   for(let r=0;r<FR;r++){const e=list[r];
     if(e){const ttc=effTTC(e);const{ht,tva}=expTVAsplit(e);
-      const lib=esc(e.libelle||"")+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
+      const cx=(e.cur&&e.cur!=="EUR")?` [${e.cur} ${num2(e.curTTC!=null?e.curTTC:(e.fx?e.ttc/e.fx:0))}]`:"";
+      const lib=esc(e.libelle||"")+cx+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
       fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td><td>${num2(ht)}</td><td>${num2(tva)}</td><td>${num2(ttc)}</td><td>${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
     } else fr+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   }
@@ -533,6 +619,11 @@ function buildSheet(id){
   const cb=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>`;
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
   const taux=kms[0]?numIK(kms[0].taux||i.ik):"";
+  /* Champ « Devises et taux de conversion » : lignes distinctes devise / taux / date. */
+  const fxSeen=new Set(),fxParts=[];
+  list.forEach(e=>{if(e.cur&&e.cur!=="EUR"){const key=e.cur+"|"+(e.fx||0)+"|"+(e.fxDate||"");
+    if(!fxSeen.has(key)){fxSeen.add(key);fxParts.push(`1 ${e.cur} = ${numFx(e.fx)} €${e.fxDate?` (${e.fxDate})`:""}`);}}});
+  const devInfo=fxParts.join(" · ");
 
   const inner=`<div class="tj">
    <div class="spine"><div class="rot"><span class="st">TWINJET</span><span class="ss">PERSONNEL NAVIGANT</span></div></div>
@@ -556,7 +647,7 @@ function buildSheet(id){
       <div class="eqbox"><span class="u8">Equipage:</span> ${esc(n.equipage||i.trigramme)}</div>
     </div>
     <div class="zobj">
-      <div class="ob"><span class="olab">Objet :</span> <span class="oval">${esc(n.objet||"")}</span><span class="dev u8">Devises et taux de conversion</span></div>
+      <div class="ob"><span class="olab">Objet :</span> <span class="oval">${esc(n.objet||"")}</span><span class="dev u8">Devises et taux de conversion${devInfo?`<span class="devval">${esc(devInfo)}</span>`:""}</span></div>
       <div class="ve"><span class="u8">Véhicule : Marque CV</span><div class="vv">${veh}</div></div>
       <div class="ika"><span class="u8">Taux IK €</span><div class="vv">${taux}</div></div>
     </div>
@@ -619,7 +710,8 @@ function pdfCSS(){return `
   .ob{width:740px;border-bottom:2px solid #000;border-right:2px solid #000;padding:1px 5px;position:relative;overflow:hidden}
   .olab{font-size:21px;font-weight:bold;font-style:italic;text-decoration:underline}
   .oval{font-size:21px;font-weight:bold;font-style:italic}
-  .dev{position:absolute;left:435px;top:2px}
+  .dev{position:absolute;left:415px;right:4px;top:2px}
+  .devval{display:block;font-weight:normal;font-style:normal;text-decoration:none;font-size:9px;line-height:1.12;margin-top:1px}
   .ve{width:209px;border-bottom:1px solid #000;border-right:1px solid #000;padding:1px 5px}
   .ika{width:98px;border-bottom:1px solid #000;padding:1px 5px}
   .vv{font-size:14px;font-style:italic}

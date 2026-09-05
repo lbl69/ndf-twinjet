@@ -7,7 +7,7 @@
    Pour publier une nouvelle version : pousse simplement index.html sur GitHub.
    Ne change VERSION que si tu modifies CE fichier ou la liste STATIC_ASSETS.
 */
-const VERSION = "ndf-v21";
+const VERSION = "ndf-v22";
 const STATIC_CACHE  = VERSION + "-static";
 const RUNTIME_CACHE = VERSION + "-runtime";
 
@@ -41,6 +41,9 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
+  // Requêtes vers un autre domaine (ex. API de taux de change BCE) : jamais interceptées ni mises en cache.
+  if (url.origin !== location.origin) return;
+
   const isHTML =
     req.mode === "navigate" ||
     url.pathname.endsWith("/") ||
