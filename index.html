@@ -163,7 +163,7 @@
 
 <script>
 /* ===== Constantes ===== */
-const APP_VERSION="2026-09-05";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
+const APP_VERSION="2026-09-05b";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
 const CAP_DEFAULT=21.50;
 const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
 const TVA_PRESETS=[20,10,5.5,2.1,0];
@@ -606,16 +606,16 @@ function buildSheet(id){
     if(e){const ttc=effTTC(e);const{ht,tva}=expTVAsplit(e);
       const cx=(e.cur&&e.cur!=="EUR")?` [${e.cur} ${num2(e.curTTC!=null?e.curTTC:(e.fx?e.ttc/e.fx:0))}]`:"";
       const lib=esc(e.libelle||"")+cx+(e.repas?` (repas ×${e.couverts||1}${isCapped(e)?", plafonné":""})`:"");
-      fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td><td>${num2(ht)}</td><td>${num2(tva)}</td><td>${num2(ttc)}</td><td>${(Number(e.tiers)||0)?num2(e.tiers):""}</td></tr>`;
+      fr+=`<tr><td>${esc(e.date||"")}</td><td>${esc(e.fournisseur||"")}</td><td>${lib}</td><td>${num2(ht)} €</td><td>${num2(tva)} €</td><td>${num2(ttc)} €</td><td>${(Number(e.tiers)||0)?num2(e.tiers)+" €":""}</td></tr>`;
     } else fr+=`<tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`;
   }
   let km="";
   for(let r=0;r<KR;r++){const k=kms[r];
-    if(k)km+=`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td><td>${num2(k.nbkm)}</td><td class="rt">${num2(kmTotal(k))}</td></tr>`;
+    if(k)km+=`<tr><td>${esc(k.depart||"")}</td><td>${esc(k.arrivee||"")}</td><td>${num2(k.nbkm)}</td><td class="rt">${num2(kmTotal(k))} €</td></tr>`;
     else km+=`<tr><td></td><td></td><td></td><td class="rt"></td></tr>`;
   }
-  km+=`<tr class="ktot"><td colspan="3">TOTAL FRAIS KM</td><td class="tv">${num2(tKM)}</td></tr>`;
-  km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="tv">${num2(tTTC)}</td></tr>`;
+  km+=`<tr class="ktot"><td colspan="3">TOTAL FRAIS KM</td><td class="tv">${num2(tKM)} €</td></tr>`;
+  km+=`<tr class="ttot"><td colspan="3">TOTAL FRAIS TTC</td><td class="tv">${num2(tTTC)} €</td></tr>`;
   const cb=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>`;
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
   const taux=kms[0]?numIK(kms[0].taux||i.ik):"";
@@ -724,18 +724,18 @@ function pdfCSS(){return `
   .tfr th{height:35px;background:#FDEADA;font-size:13px;font-weight:bold;font-style:italic;border-right:1px solid #000;border-bottom:2px solid #000;text-align:center;vertical-align:middle;padding:0 2px}
   .tfr th.w2{white-space:normal;line-height:1.05}
   .tfr th:last-child{border-right:none}
-  .tfr td{height:24px;background:#FDEADA;font-size:16px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 3px}
+  .tfr td{height:24px;background:#FDEADA;font-size:14px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;padding:0 2px}
   .tfr td:last-child{border-right:none}
   .tfr tr:last-child td{border-bottom:none}
   .kr{width:307px}
   .tkm{width:307px}
   .tkm th{height:59px;background:#DDDDDD;font-size:13px;font-weight:bold;font-style:italic;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;padding:0 2px}
   .tkm th:last-child{border-right:none}
-  .tkm td{height:24px;background:#DDDDDD;font-size:16px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;padding:0 3px}
+  .tkm td{height:24px;background:#DDDDDD;font-size:14px;text-align:center;vertical-align:middle;border-right:1px solid #000;border-bottom:1px solid #000;overflow:hidden;white-space:nowrap;padding:0 2px}
   .tkm td:last-child{border-right:none}
   .tkm td.rt{text-align:right;padding-right:6px}
   .tkm .ktot td{font-weight:bold;font-size:13px}
-  .tkm .ktot td.tv,.tkm .ttot td.tv{font-size:16px;font-weight:bold;font-style:italic;text-align:right;padding-right:6px}
+  .tkm .ktot td.tv,.tkm .ttot td.tv{font-size:14px;font-weight:bold;font-style:italic;text-align:right;padding-right:6px}
   .tkm .ttot td{background:#FDEADA;font-weight:bold;font-size:13px;border-top:2px solid #000}
   .tkm tr:last-child td{border-bottom:none}
   /* Bas : libellés Arial 8 soulignés haut-gauche ; TOTAL GENERAL 12 / valeur 14 soulignée */
