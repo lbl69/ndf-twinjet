@@ -197,8 +197,8 @@ const FX_ECB=new Set("USD GBP CHF CAD AUD JPY SEK NOK DKK PLN CZK HUF RON BGN TR
    assuré par les policies RLS côté base, pas par le secret de cette clé.
    Tant qu'elles ne sont pas renseignées, l'app tourne en local uniquement — comportement
    identique à avant l'ajout de cette fonctionnalité, aucune régression pour l'usage actuel. */
-const SUPABASE_URL="REPLACE_ME_SUPABASE_URL";
-const SUPABASE_ANON_KEY="REPLACE_ME_SUPABASE_ANON_KEY";
+const SUPABASE_URL="https://btsnhiwntdbmvsctwkej.supabase.co";
+const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0c25oaXdudGRibXZzY3R3a2VqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDc5NjgsImV4cCI6MjEwNjI4Mzk2OH0.sDXEh_PKjr6Kglw3_6Kp7AAj_06mL3gkBowbFYE-u3M";
 const TWINJET_DOMAIN="twinjet.net";
 const supa=(SUPABASE_URL.startsWith("REPLACE_ME")||!window.supabase)?null:
   window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
@@ -408,29 +408,34 @@ function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;",
 /* ===== Connexion (multi-pilotes) =====
    N'est appelé que si `supa` est configuré (voir constantes) — sinon l'app démarre directement
    en local, comme avant cette fonctionnalité. */
-let authState={mode:"form",email:"",error:"",sending:false};
+let authState={mode:"link",email:"",error:"",sending:false};
 function renderAuthScreen(){
   if(authState.mode==="sent"){
     app.innerHTML=`<div class="authwrap"><div class="authcard">
       <div class="brand">NDF<b>·</b>CARNET</div>
       <div class="tag" style="margin:4px 0 18px">TWIN JET / NOTE DE FRAIS</div>
       <div class="authok">Lien de connexion envoyé à ${esc(authState.email)}. Ouvre-le depuis cet appareil pour continuer.</div>
-      <button class="btn ghost" style="margin-top:16px" onclick="authState.mode='form';renderAuthScreen()">‹ Utiliser une autre adresse</button>
+      <button class="btn ghost" style="margin-top:16px" onclick="authSwitchMode('link')">‹ Utiliser une autre adresse</button>
     </div></div>`;
     return;
   }
+  const isPw=authState.mode==="password";
   app.innerHTML=`<div class="authwrap"><div class="authcard">
     <div class="brand">NDF<b>·</b>CARNET</div>
     <div class="tag" style="margin:4px 0 18px">TWIN JET / NOTE DE FRAIS</div>
-    <div class="authmsg">Connexion réservée aux adresses <b>@${esc(TWINJET_DOMAIN)}</b>. Un lien de connexion te sera envoyé par email — pas de mot de passe à retenir.</div>
+    <div class="authmsg">${isPw?"Connecte-toi avec ton mot de passe.":
+      `Connexion réservée aux adresses <b>@${esc(TWINJET_DOMAIN)}</b>. Pour ta première connexion, un lien te sera envoyé par email ; tu pourras ensuite définir un mot de passe pour aller plus vite.`}</div>
     <label class="f">Email professionnel</label>
-    <input id="auth_email" type="email" placeholder="prenom.nom@${esc(TWINJET_DOMAIN)}" value="${esc(authState.email)}" autocomplete="email" autofocus>
+    <input id="auth_email" type="email" placeholder="prenom.nom@${esc(TWINJET_DOMAIN)}" value="${esc(authState.email)}" autocomplete="email" ${isPw?"":"autofocus"}>
+    ${isPw?`<label class="f">Mot de passe</label><input id="auth_pw" type="password" autocomplete="current-password" autofocus>`:""}
     ${authState.error?`<div class="autherr">${esc(authState.error)}</div>`:""}
-    <button class="btn amber" style="margin-top:16px" ${authState.sending?"disabled":""} onclick="sendMagicLink()">${authState.sending?"Envoi…":"Envoyer le lien de connexion"}</button>
+    <button class="btn amber" style="margin-top:16px" ${authState.sending?"disabled":""} onclick="${isPw?"doPasswordLogin()":"sendMagicLink()"}">${authState.sending?"…":(isPw?"Se connecter":"Envoyer le lien de connexion")}</button>
+    <button class="btn ghost" style="margin-top:10px" onclick="authSwitchMode('${isPw?"link":"password"}')">${isPw?"‹ Se connecter par lien email":"J'ai déjà un mot de passe"}</button>
   </div></div>`;
-  const el=document.getElementById("auth_email");
-  if(el)el.addEventListener("keydown",ev=>{if(ev.key==="Enter")sendMagicLink();});
+  const el=document.getElementById(isPw?"auth_pw":"auth_email");
+  if(el)el.addEventListener("keydown",ev=>{if(ev.key==="Enter")(isPw?doPasswordLogin():sendMagicLink());});
 }
+function authSwitchMode(m){authState.mode=m;authState.error="";renderAuthScreen();}
 async function sendMagicLink(){
   const email=(document.getElementById("auth_email")?.value||"").trim().toLowerCase();
   authState.email=email;
@@ -441,6 +446,40 @@ async function sendMagicLink(){
   authState.sending=false;
   if(error){authState.error="Envoi impossible : "+(error.message||error);renderAuthScreen();return;}
   authState.mode="sent";renderAuthScreen();
+}
+async function doPasswordLogin(){
+  const email=(document.getElementById("auth_email")?.value||"").trim().toLowerCase();
+  const password=document.getElementById("auth_pw")?.value||"";
+  authState.email=email;
+  if(!email||!password){authState.error="Renseigne ton email et ton mot de passe.";renderAuthScreen();return;}
+  authState.error="";authState.sending=true;renderAuthScreen();
+  const{error}=await supa.auth.signInWithPassword({email,password});
+  authState.sending=false;
+  if(error){authState.error="Email ou mot de passe incorrect.";renderAuthScreen();return;}
+  /* succès : onAuthStateChange (SIGNED_IN) prend le relais tout seul */
+}
+
+/* ---- Définir / changer le mot de passe (une fois connecté) ---- */
+function openSetPassword(first){
+  modal(`<h3>${first?"Définir un mot de passe":"Changer le mot de passe"}</h3>
+    ${first?`<div class="authmsg" style="margin-bottom:14px">Optionnel : ça te permet de te reconnecter directement, sans attendre un email à chaque fois. Le lien par email reste toujours disponible si tu préfères.</div>`:""}
+    <label class="f">Nouveau mot de passe</label><input id="pw1" type="password" placeholder="8 caractères minimum" autocomplete="new-password">
+    <label class="f">Confirmer</label><input id="pw2" type="password" autocomplete="new-password">
+    <div id="pw_err"></div>
+    <div class="actions">
+      <button class="btn ghost" onclick="closeModal()">${first?"Plus tard":"Annuler"}</button>
+      <button class="btn amber" onclick="submitSetPassword()">Définir</button>
+    </div>`);
+}
+async function submitSetPassword(){
+  const p1=document.getElementById("pw1").value,p2=document.getElementById("pw2").value;
+  const err=document.getElementById("pw_err");
+  if(p1.length<8){err.innerHTML=`<div class="autherr">8 caractères minimum.</div>`;return;}
+  if(p1!==p2){err.innerHTML=`<div class="autherr">Les deux mots de passe ne correspondent pas.</div>`;return;}
+  const{error}=await supa.auth.updateUser({password:p1});
+  if(error){err.innerHTML=`<div class="autherr">Erreur : ${esc(error.message)}</div>`;return;}
+  closeModal();
+  alert("Mot de passe défini — utilise-le pour te connecter la prochaine fois.");
 }
 
 /* ===== Home ===== */
@@ -619,8 +658,9 @@ function openId(){const i=state.id;
     </div>
     <div class="actions" style="margin-top:0">
       <button class="btn ghost" id="btnSync" onclick="syncNow(true)">⟳ Synchroniser</button>
-      <button class="btn ghost" onclick="signOut()">Déconnexion</button>
-    </div>`:""}
+      <button class="btn ghost" onclick="openSetPassword(false)">Mot de passe</button>
+    </div>
+    <button class="btn ghost" style="margin-top:10px" onclick="signOut()">Déconnexion</button>`:""}
     <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
     <button class="btn amber" onclick="saveId()">Enregistrer</button></div>`);}
 async function forceUpdate(btn){
@@ -1062,9 +1102,10 @@ async function bootApp(){
   });
 }
 async function onSignedIn(session){
+  const firstLoginOnThisDevice=!state.cloud.migrated;
   state.cloud.userId=session.user.id;
   state.cloud.email=session.user.email;
-  if(!state.cloud.migrated){
+  if(firstLoginOnThisDevice){
     /* Première connexion sur cet appareil : les notes locales existantes (créées avant la
        connexion, ou héritées de l'ancienne version mono-pilote) partent au premier sync. */
     const now=new Date().toISOString();
@@ -1077,6 +1118,9 @@ async function onSignedIn(session){
   await save();
   render();
   if(navigator.onLine)syncNow();
+  /* Proposer un mot de passe seulement après une connexion par lien email (pas après une
+     connexion par mot de passe, qui en suppose déjà un). */
+  if(firstLoginOnThisDevice&&authState.mode!=="password")openSetPassword(true);
 }
 window.addEventListener("online",()=>{if(state.cloud&&state.cloud.userId)syncNow();});
 bootApp();
