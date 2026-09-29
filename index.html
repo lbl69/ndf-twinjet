@@ -34,6 +34,10 @@
   .idbox{text-align:right;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.5}
   .idbox span{color:var(--cyan)}
   .gear{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:4px}
+  .acctbtn{background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:10px;
+    padding:8px 12px;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
+    font-family:'IBM Plex Sans',sans-serif;flex:none}
+  .acctbtn:active{filter:brightness(.95)}
   h2.section{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted);
     text-transform:uppercase;margin:22px 2px 10px}
 
@@ -59,6 +63,12 @@
   .filterrow select{flex:1 1 108px;width:auto;font-size:13px;padding:10px 8px}
   .chipx{flex:none;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:10px;
     padding:0 14px;cursor:pointer;font-size:15px;line-height:1}
+
+  .authwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+  .authcard{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px 22px}
+  .authmsg{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px}
+  .autherr{font-size:12.5px;color:var(--red);background:#2a1416;border:1px solid #4a2226;border-radius:9px;padding:9px 11px;margin-top:10px}
+  .authok{font-size:12.5px;color:var(--green);background:#0f2417;border:1px solid #1c3d26;border-radius:9px;padding:9px 11px}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;
     font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;padding:13px 16px;cursor:pointer;width:100%}
@@ -165,6 +175,7 @@
 <div class="print-sheet" id="printSheet"></div>
 <script src="jspdf.umd.min.js"></script>
 <script src="html2canvas.min.js"></script>
+<script src="supabase-js.min.js"></script>
 
 <script>
 /* ===== Constantes ===== */
@@ -180,9 +191,23 @@ const FX_HOSTS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
 /* Devises cotées par la BCE (taux auto). Les autres (AED, MAD, TND…) : saisie manuelle du taux. */
 const FX_ECB=new Set("USD GBP CHF CAD AUD JPY SEK NOK DKK PLN CZK HUF RON BGN TRY ILS CNY ZAR SGD HKD INR THB NZD".split(" "));
 
+/* ===== Cloud (multi-pilotes) =====
+   Renseigner ces deux valeurs une fois le projet Supabase créé (voir supabase/migrations/).
+   Elles sont publiques par conception (clé "anon") : l'isolement des données entre pilotes est
+   assuré par les policies RLS côté base, pas par le secret de cette clé.
+   Tant qu'elles ne sont pas renseignées, l'app tourne en local uniquement — comportement
+   identique à avant l'ajout de cette fonctionnalité, aucune régression pour l'usage actuel. */
+const SUPABASE_URL="REPLACE_ME_SUPABASE_URL";
+const SUPABASE_ANON_KEY="REPLACE_ME_SUPABASE_ANON_KEY";
+const TWINJET_DOMAIN="twinjet.net";
+const supa=(SUPABASE_URL.startsWith("REPLACE_ME")||!window.supabase)?null:
+  window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+
 let state={
-  id:{nom:"BLOUDEAU Loris",fonction:"CDB",trigramme:"BLC",base:"LFLL",cap:CAP_DEFAULT,ik:IK_DEFAULT},
-  notes:[], exps:[], kms:[]
+  id:{nom:"",fonction:"",trigramme:"",base:"",cap:CAP_DEFAULT,ik:IK_DEFAULT},
+  notes:[], exps:[], kms:[],
+  cloud:{userId:null,email:null,lastSyncAt:null,migrated:false},
+  tomb:{notes:[],exps:[],kms:[]}
 };
 let view={page:"home",noteId:null};
 let search={q:"",month:"",year:"",cat:""};
@@ -236,8 +261,102 @@ async function load(){
   try{const raw=await Store.get();
     if(raw){const s=JSON.parse(raw);state={...state,...s,id:{...state.id,...(s.id||{})}};state.kms=state.kms||[];}
   }catch(e){}
+  state.cloud=state.cloud||{userId:null,email:null,lastSyncAt:null,migrated:false};
+  state.tomb=state.tomb||{notes:[],exps:[],kms:[]};
 }
 async function save(){try{await Store.set(JSON.stringify(state));}catch(e){console.warn(e);}}
+
+/* ===== Synchro cloud =====
+   Chaque note/dépense/km porte un `updated_at` (ajouté par les fonctions saveXxx). Un sync :
+   1) pousse tout ce qui est plus récent que le dernier sync, 2) applique les suppressions en
+   attente (tombstones), 3) rapatrie ce qui a changé côté serveur depuis (dont les suppressions
+   faites depuis un autre appareil). Dernier `updated_at` gagne en cas de conflit. */
+function tombAdd(kind,ids){if(!ids||!ids.length)return;
+  state.tomb=state.tomb||{notes:[],exps:[],kms:[]};
+  state.tomb[kind]=[...new Set([...(state.tomb[kind]||[]),...ids])];}
+function syncSoon(){if(supa&&state.cloud.userId&&navigator.onLine)syncNow();}
+
+function noteToRow(n,uid){return{id:n.id,user_id:uid,type:n.type,date:n.date||null,mois:n.mois||null,
+  titre:n.titre||null,objet:n.objet||null,categorie:n.categorie||null,equipage:n.equipage||null,
+  veh_marque:n.vehMarque||null,veh_cv:n.vehCV||null,updated_at:n.updated_at};}
+function rowToNote(r){return{id:r.id,type:r.type,date:r.date||"",mois:r.mois||"",titre:r.titre||"",
+  objet:r.objet||"",categorie:r.categorie||"",equipage:r.equipage||"",vehMarque:r.veh_marque||"",
+  vehCV:r.veh_cv||"",updated_at:r.updated_at};}
+function expToRow(e,uid){return{id:e.id,note_id:e.noteId,user_id:uid,date:e.date||null,ttc:e.ttc,
+  fournisseur:e.fournisseur||null,libelle:e.libelle||null,repas:!!e.repas,couverts:e.couverts||1,
+  tiers:e.tiers||0,tva:e.tva,tva_manuel:!!e.tvaManuel,tva_montant:e.tvaMontant||0,cur:e.cur||"EUR",
+  fx:e.fx||1,fx_date:e.fxDate||"",cur_ttc:e.curTTC,updated_at:e.updated_at};}
+function rowToExp(r){return{id:r.id,noteId:r.note_id,date:r.date||"",ttc:Number(r.ttc)||0,
+  fournisseur:r.fournisseur||"",libelle:r.libelle||"",repas:!!r.repas,couverts:r.couverts||1,
+  tiers:Number(r.tiers)||0,tva:r.tva==null?0:Number(r.tva),tvaManuel:!!r.tva_manuel,
+  tvaMontant:Number(r.tva_montant)||0,cur:r.cur||"EUR",fx:Number(r.fx)||1,fxDate:r.fx_date||"",
+  curTTC:r.cur_ttc==null?null:Number(r.cur_ttc),updated_at:r.updated_at};}
+function kmToRow(k,uid){return{id:k.id,note_id:k.noteId,user_id:uid,marque:k.marque||null,cv:k.cv||null,
+  depart:k.depart||null,arrivee:k.arrivee||null,nbkm:k.nbkm,taux:k.taux,updated_at:k.updated_at};}
+function rowToKm(r){return{id:r.id,noteId:r.note_id,marque:r.marque||"",cv:r.cv||"",depart:r.depart||"",
+  arrivee:r.arrivee||"",nbkm:Number(r.nbkm)||0,taux:Number(r.taux)||0,updated_at:r.updated_at};}
+function profileToRow(i,uid,email){return{id:uid,email,nom:i.nom||"",fonction:i.fonction||"",
+  trigramme:i.trigramme||"",base:i.base||"",cap:i.cap||CAP_DEFAULT,ik:i.ik||IK_DEFAULT,updated_at:i.updated_at};}
+
+function mergeRemote(localArr,rows,mapFn){
+  if(!rows)return;
+  rows.forEach(r=>{
+    const idx=localArr.findIndex(x=>x.id===r.id);
+    if(r.deleted){ if(idx>=0)localArr.splice(idx,1); return; }
+    const mapped=mapFn(r);
+    if(idx>=0){ if((r.updated_at||"")>=(localArr[idx].updated_at||"")) localArr[idx]=mapped; }
+    else localArr.push(mapped);
+  });
+}
+
+let syncing=false;
+async function syncNow(manual){
+  if(!supa||!state.cloud.userId||!navigator.onLine||syncing)return;
+  syncing=true;
+  const btn=document.getElementById("btnSync");if(btn&&manual){btn.disabled=true;btn.textContent="Synchro…";}
+  try{
+    const uid=state.cloud.userId;
+    const since=state.cloud.lastSyncAt||"1970-01-01T00:00:00.000Z";
+    const startedAt=new Date().toISOString();
+
+    const dirtyNotes=state.notes.filter(n=>(n.updated_at||"")>since);
+    const dirtyExps=state.exps.filter(e=>(e.updated_at||"")>since);
+    const dirtyKms=state.kms.filter(k=>(k.updated_at||"")>since);
+    if(dirtyNotes.length){const{error}=await supa.from("notes").upsert(dirtyNotes.map(n=>noteToRow(n,uid)));if(error)throw error;}
+    if(dirtyExps.length){const{error}=await supa.from("expenses").upsert(dirtyExps.map(e=>expToRow(e,uid)));if(error)throw error;}
+    if(dirtyKms.length){const{error}=await supa.from("kms").upsert(dirtyKms.map(k=>kmToRow(k,uid)));if(error)throw error;}
+    if((state.id.updated_at||"")>since){
+      const{error}=await supa.from("profiles").upsert([profileToRow(state.id,uid,state.cloud.email)]);if(error)throw error;
+    }
+
+    const tomb=state.tomb||{notes:[],exps:[],kms:[]};
+    const nowIso=new Date().toISOString();
+    if(tomb.notes.length){const{error}=await supa.from("notes").update({deleted:true,updated_at:nowIso}).in("id",tomb.notes);if(error)throw error;}
+    if(tomb.exps.length){const{error}=await supa.from("expenses").update({deleted:true,updated_at:nowIso}).in("id",tomb.exps);if(error)throw error;}
+    if(tomb.kms.length){const{error}=await supa.from("kms").update({deleted:true,updated_at:nowIso}).in("id",tomb.kms);if(error)throw error;}
+    state.tomb={notes:[],exps:[],kms:[]};
+
+    const[rn,re,rk]=await Promise.all([
+      supa.from("notes").select("*").gt("updated_at",since),
+      supa.from("expenses").select("*").gt("updated_at",since),
+      supa.from("kms").select("*").gt("updated_at",since)
+    ]);
+    if(rn.error)throw rn.error; if(re.error)throw re.error; if(rk.error)throw rk.error;
+
+    mergeRemote(state.notes,rn.data,rowToNote);
+    mergeRemote(state.exps,re.data,rowToExp);
+    mergeRemote(state.kms,rk.data,rowToKm);
+
+    state.cloud.lastSyncAt=startedAt;
+    await save();
+    if(view.page==="home"||view.page==="detail")render();
+  }catch(err){
+    console.warn("sync:",err&&err.message||err);
+  }finally{
+    syncing=false;
+    if(btn&&manual){btn.disabled=false;btn.textContent="⟳ Synchroniser";}
+  }
+}
 
 /* ===== Sauvegarde / restauration ===== */
 function exportData(){
@@ -285,6 +404,44 @@ function expTVAsplit(e){
 
 const app=document.getElementById("app");
 function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+/* ===== Connexion (multi-pilotes) =====
+   N'est appelé que si `supa` est configuré (voir constantes) — sinon l'app démarre directement
+   en local, comme avant cette fonctionnalité. */
+let authState={mode:"form",email:"",error:"",sending:false};
+function renderAuthScreen(){
+  if(authState.mode==="sent"){
+    app.innerHTML=`<div class="authwrap"><div class="authcard">
+      <div class="brand">NDF<b>·</b>CARNET</div>
+      <div class="tag" style="margin:4px 0 18px">TWIN JET / NOTE DE FRAIS</div>
+      <div class="authok">Lien de connexion envoyé à ${esc(authState.email)}. Ouvre-le depuis cet appareil pour continuer.</div>
+      <button class="btn ghost" style="margin-top:16px" onclick="authState.mode='form';renderAuthScreen()">‹ Utiliser une autre adresse</button>
+    </div></div>`;
+    return;
+  }
+  app.innerHTML=`<div class="authwrap"><div class="authcard">
+    <div class="brand">NDF<b>·</b>CARNET</div>
+    <div class="tag" style="margin:4px 0 18px">TWIN JET / NOTE DE FRAIS</div>
+    <div class="authmsg">Connexion réservée aux adresses <b>@${esc(TWINJET_DOMAIN)}</b>. Un lien de connexion te sera envoyé par email — pas de mot de passe à retenir.</div>
+    <label class="f">Email professionnel</label>
+    <input id="auth_email" type="email" placeholder="prenom.nom@${esc(TWINJET_DOMAIN)}" value="${esc(authState.email)}" autocomplete="email" autofocus>
+    ${authState.error?`<div class="autherr">${esc(authState.error)}</div>`:""}
+    <button class="btn amber" style="margin-top:16px" ${authState.sending?"disabled":""} onclick="sendMagicLink()">${authState.sending?"Envoi…":"Envoyer le lien de connexion"}</button>
+  </div></div>`;
+  const el=document.getElementById("auth_email");
+  if(el)el.addEventListener("keydown",ev=>{if(ev.key==="Enter")sendMagicLink();});
+}
+async function sendMagicLink(){
+  const email=(document.getElementById("auth_email")?.value||"").trim().toLowerCase();
+  authState.email=email;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){authState.error="Adresse email invalide.";renderAuthScreen();return;}
+  if(!email.endsWith("@"+TWINJET_DOMAIN)){authState.error=`Réservé aux adresses @${TWINJET_DOMAIN}.`;renderAuthScreen();return;}
+  authState.error="";authState.sending=true;renderAuthScreen();
+  const{error}=await supa.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+  authState.sending=false;
+  if(error){authState.error="Envoi impossible : "+(error.message||error);renderAuthScreen();return;}
+  authState.mode="sent";renderAuthScreen();
+}
 
 /* ===== Home ===== */
 const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
@@ -352,9 +509,9 @@ function render(){
   app.innerHTML=`
     <header>
       <div><div class="tag">TWIN JET / NOTE DE FRAIS</div><div class="brand">NDF<b>·</b>CARNET</div></div>
-      <div style="display:flex;align-items:flex-end;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
         <div class="idbox">${esc(state.id.trigramme)} · <span>${esc(state.id.fonction)}</span><br>${esc(state.id.base)}</div>
-        <button class="gear" onclick="openId()">⚙︎</button>
+        <button class="acctbtn" onclick="openId()">⚙︎ Compte</button>
       </div>
     </header>
     ${searchBarHTML()}
@@ -455,6 +612,15 @@ function openId(){const i=state.id;
       Version installée : <span style="color:var(--cyan)">${esc(APP_VERSION)}</span><br>
       Récupère la dernière version publiée puis recharge l'app. Tes notes ne sont pas touchées.
     </div>
+    ${supa?`<label class="f">Compte</label>
+    <div style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:8px;line-height:1.6">
+      <span style="color:var(--cyan)">${esc(state.cloud.email||"—")}</span><br>
+      ${state.cloud.lastSyncAt?`Dernière synchro : ${new Date(state.cloud.lastSyncAt).toLocaleString("fr-FR")}`:"Jamais synchronisé"}
+    </div>
+    <div class="actions" style="margin-top:0">
+      <button class="btn ghost" id="btnSync" onclick="syncNow(true)">⟳ Synchroniser</button>
+      <button class="btn ghost" onclick="signOut()">Déconnexion</button>
+    </div>`:""}
     <div class="actions"><button class="btn ghost" onclick="closeModal()">Annuler</button>
     <button class="btn amber" onclick="saveId()">Enregistrer</button></div>`);}
 async function forceUpdate(btn){
@@ -470,7 +636,13 @@ async function forceUpdate(btn){
 }
 function saveId(){state.id.nom=val("i_nom");state.id.fonction=val("i_fct");state.id.trigramme=val("i_tri");
   state.id.base=val("i_base");state.id.cap=fnum("i_cap")||CAP_DEFAULT;state.id.ik=fnum("i_ik")||IK_DEFAULT;
-  save();closeModal();render();}
+  state.id.updated_at=new Date().toISOString();
+  save();closeModal();render();syncSoon();}
+async function signOut(){
+  if(!confirm("Se déconnecter ? Tes notes restent sur cet appareil et se resynchroniseront à la prochaine connexion."))return;
+  closeModal();
+  try{await supa.auth.signOut();}catch(e){}
+}
 
 /* ---- Note ---- */
 let noteDraftType="mission",catPick="Ligne";
@@ -502,17 +674,21 @@ function renderNoteFields(n){const box=document.getElementById("nfields");
 function pickCat(btn,c){catPick=c;btn.parentNode.querySelectorAll("button").forEach(b=>b.classList.remove("on"));btn.classList.add("on");}
 function saveNote(id){
   const titre=val("n_titre");
-  const common={categorie:catPick,titre:titre,objet:titre,equipage:val("n_eq")||state.id.trigramme};
+  const common={categorie:catPick,titre:titre,objet:titre,equipage:val("n_eq")||state.id.trigramme,
+    updated_at:new Date().toISOString()};
   let o;
   if(noteDraftType==="mission") o={type:"mission",date:val("n_date"),...common};
   else o={type:"ligne",mois:document.getElementById("n_mois").value,...common};
   if(id){Object.assign(state.notes.find(x=>x.id===id),o);}
   else{const nid=uid();state.notes.push({id:nid,...o});view={page:"detail",noteId:nid};}
-  save();closeModal();render();
+  save();closeModal();render();syncSoon();
 }
 function delNote(id){if(!confirm("Supprimer cette note, ses dépenses et ses km ?"))return;
+  tombAdd("notes",[id]);
+  tombAdd("exps",state.exps.filter(e=>e.noteId===id).map(e=>e.id));
+  tombAdd("kms",state.kms.filter(k=>k.noteId===id).map(k=>k.id));
   state.notes=state.notes.filter(n=>n.id!==id);state.exps=state.exps.filter(e=>e.noteId!==id);
-  state.kms=state.kms.filter(k=>k.noteId!==id);save();goHome();}
+  state.kms=state.kms.filter(k=>k.noteId!==id);save();goHome();syncSoon();}
 
 /* ---- Dépense ---- */
 let expRepas=false,expTva=20,expTvaManuel=false;
@@ -628,10 +804,11 @@ function saveExp(id){
     tvaManuel:expTvaManuel,
     tva:expTvaManuel?null:(parseFloat(val("e_tva"))||0),
     tvaMontant:expTvaManuel?fnum("e_tva_eur"):0,
-    cur:cur,fx:fx,fxDate:cur==="EUR"?"":(expFxManual?"":expFxDate),curTTC:cur==="EUR"?null:amt};
+    cur:cur,fx:fx,fxDate:cur==="EUR"?"":(expFxManual?"":expFxDate),curTTC:cur==="EUR"?null:amt,
+    updated_at:new Date().toISOString()};
   if(id)Object.assign(state.exps.find(x=>x.id===id),o);else state.exps.push({id:uid(),...o});
-  save();closeModal();render();}
-function delExp(id){state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();}
+  save();closeModal();render();syncSoon();}
+function delExp(id){tombAdd("exps",[id]);state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();syncSoon();}
 
 /* ---- Km ---- */
 function openKm(id){
@@ -649,11 +826,11 @@ function openKm(id){
 }
 function saveKm(id){
   const o={noteId:view.noteId,marque:val("k_marque"),cv:val("k_cv"),depart:val("k_dep"),arrivee:val("k_arr"),
-    nbkm:fnum("k_km"),taux:fnum("k_taux")||state.id.ik};
-  const n=state.notes.find(x=>x.id===view.noteId);n.vehMarque=o.marque;n.vehCV=o.cv;
+    nbkm:fnum("k_km"),taux:fnum("k_taux")||state.id.ik,updated_at:new Date().toISOString()};
+  const n=state.notes.find(x=>x.id===view.noteId);n.vehMarque=o.marque;n.vehCV=o.cv;n.updated_at=o.updated_at;
   if(id)Object.assign(state.kms.find(x=>x.id===id),o);else state.kms.push({id:uid(),...o});
-  save();closeModal();render();}
-function delKm(id){state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();render();}
+  save();closeModal();render();syncSoon();}
+function delKm(id){tombAdd("kms",[id]);state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();render();syncSoon();}
 
 /* ===== Impression — calque formulaire officiel ===== */
 function buildSheet(id){
@@ -868,7 +1045,41 @@ async function generatePDF(id){
   }finally{ ifr.remove(); }
 }
 
-(async()=>{await load();render();})();
+/* ===== Démarrage =====
+   Sans Supabase configuré : comportement inchangé (app locale directe). Avec Supabase configuré :
+   session en cache localement par le SDK -> l'app redémarre sans réseau si déjà connecté une fois
+   (usage en vol) ; sinon écran de connexion. */
+async function bootApp(){
+  await load();
+  if(!supa){render();return;}
+  const{data:{session}}=await supa.auth.getSession().catch(()=>({data:{session:null}}));
+  if(session)await onSignedIn(session);else renderAuthScreen();
+  supa.auth.onAuthStateChange(async(event,session)=>{
+    if(event==="SIGNED_IN"&&session){await onSignedIn(session);}
+    else if(event==="SIGNED_OUT"){
+      state.cloud={userId:null,email:null,lastSyncAt:null,migrated:false};save();renderAuthScreen();
+    }
+  });
+}
+async function onSignedIn(session){
+  state.cloud.userId=session.user.id;
+  state.cloud.email=session.user.email;
+  if(!state.cloud.migrated){
+    /* Première connexion sur cet appareil : les notes locales existantes (créées avant la
+       connexion, ou héritées de l'ancienne version mono-pilote) partent au premier sync. */
+    const now=new Date().toISOString();
+    state.notes.forEach(n=>n.updated_at=now);
+    state.exps.forEach(e=>e.updated_at=now);
+    state.kms.forEach(k=>k.updated_at=now);
+    state.id.updated_at=now;
+    state.cloud.migrated=true;
+  }
+  await save();
+  render();
+  if(navigator.onLine)syncNow();
+}
+window.addEventListener("online",()=>{if(state.cloud&&state.cloud.userId)syncNow();});
+bootApp();
 
 /* PWA : service worker pour le hors ligne (uniquement en contexte sécurisé) */
 if("serviceWorker" in navigator && location.protocol==="https:"){

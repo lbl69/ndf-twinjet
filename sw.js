@@ -7,14 +7,14 @@
    Pour publier une nouvelle version : pousse simplement index.html sur GitHub.
    Ne change VERSION que si tu modifies CE fichier ou la liste STATIC_ASSETS.
 */
-const VERSION = "ndf-v22";
+const VERSION = "ndf-v23";
 const STATIC_CACHE  = VERSION + "-static";
 const RUNTIME_CACHE = VERSION + "-runtime";
 
 const STATIC_ASSETS = [
   "./manifest.webmanifest",
   "./icon-192.png", "./icon-512.png", "./icon-512-maskable.png", "./apple-touch-icon.png",
-  "./jspdf.umd.min.js", "./html2canvas.min.js"
+  "./jspdf.umd.min.js", "./html2canvas.min.js", "./supabase-js.min.js"
 ];
 
 self.addEventListener("install", (e) => {
@@ -41,7 +41,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // Requêtes vers un autre domaine (ex. API de taux de change BCE) : jamais interceptées ni mises en cache.
+  // Requêtes vers un autre domaine (API de taux de change BCE, Supabase) : jamais interceptées ni mises en cache.
   if (url.origin !== location.origin) return;
 
   const isHTML =
