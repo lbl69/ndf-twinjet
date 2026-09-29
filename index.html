@@ -195,7 +195,30 @@ let state={
 let view={page:"home",noteId:null};
 let search={q:"",month:"",year:"",cat:""};
 
-const uid=()=>Math.random().toString(36).slice(2,10);
+const uid=()=>{
+  if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{
+    const r=Math.random()*16|0,v=c==="x"?r:(r&0x3|0x8);
+    return v.toString(16);
+  });
+};
+const isUuid=s=>/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s||"");
+function fixLegacyIds(){
+  let changed=false;
+  const now=new Date().toISOString();
+  state.notes.forEach(n=>{
+    if(!isUuid(n.id)){
+      const oldId=n.id,newId=uid();
+      n.id=newId;n.updated_at=now;
+      state.exps.forEach(e=>{if(e.noteId===oldId){e.noteId=newId;e.updated_at=now;}});
+      state.kms.forEach(k=>{if(k.noteId===oldId){k.noteId=newId;k.updated_at=now;}});
+      changed=true;
+    }
+  });
+  state.exps.forEach(e=>{if(!isUuid(e.id)){e.id=uid();e.updated_at=now;changed=true;}});
+  state.kms.forEach(k=>{if(!isUuid(k.id)){k.id=uid();k.updated_at=now;changed=true;}});
+  return changed;
+}
 const eur=n=>(n==null||isNaN(n)?"—":Number(n).toFixed(2).replace(".",",")+" €");
 const num2=n=>Number(n||0).toFixed(2).replace(".",",");
 const numIK=n=>{const v=Number(n||0);let s=(Math.round(v*1000)/1000).toFixed(3);if(s.endsWith("0"))s=s.slice(0,-1);return s.replace(".",",");};
@@ -243,6 +266,7 @@ async function load(){
   }catch(e){}
   state.cloud=state.cloud||{userId:null,email:null,lastSyncAt:null,migrated:false,lastError:""};
   state.tomb=state.tomb||{notes:[],exps:[],kms:[]};
+  if(fixLegacyIds())await save();
 }
 async function save(){try{await Store.set(JSON.stringify(state));}catch(e){console.warn(e);}}
 
