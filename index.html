@@ -189,7 +189,7 @@ const supa=(SUPABASE_URL.startsWith("REPLACE_ME")||!window.supabase)?null:
 let state={
   id:{nom:"",fonction:"",trigramme:"",base:"",cap:CAP_DEFAULT,ik:IK_DEFAULT},
   notes:[], exps:[], kms:[],
-  cloud:{userId:null,email:null,lastSyncAt:null,migrated:false},
+  cloud:{userId:null,email:null,lastSyncAt:null,migrated:false,lastError:""},
   tomb:{notes:[],exps:[],kms:[]}
 };
 let view={page:"home",noteId:null};
@@ -241,7 +241,7 @@ async function load(){
   try{const raw=await Store.get();
     if(raw){const s=JSON.parse(raw);state={...state,...s,id:{...state.id,...(s.id||{})}};state.kms=state.kms||[];}
   }catch(e){}
-  state.cloud=state.cloud||{userId:null,email:null,lastSyncAt:null,migrated:false};
+  state.cloud=state.cloud||{userId:null,email:null,lastSyncAt:null,migrated:false,lastError:""};
   state.tomb=state.tomb||{notes:[],exps:[],kms:[]};
 }
 async function save(){try{await Store.set(JSON.stringify(state));}catch(e){console.warn(e);}}
@@ -323,10 +323,13 @@ async function syncNow(manual){
     mergeRemote(state.kms,rk.data,rowToKm);
 
     state.cloud.lastSyncAt=startedAt;
+    state.cloud.lastError="";
     await save();
     if(view.page==="home"||view.page==="detail")render();
   }catch(err){
-    console.warn("sync:",err&&err.message||err);
+    state.cloud.lastError=(err&&err.message)||String(err);
+    console.warn("sync:",state.cloud.lastError);
+    await save();
   }finally{
     syncing=false;
     if(btn&&manual){btn.disabled=false;btn.textContent="⟳ Synchroniser";}
@@ -351,9 +354,16 @@ function importData(input){
       const s=JSON.parse(r.result);
       if(!s||typeof s!=="object"||!Array.isArray(s.notes))throw 0;
       if(!confirm("Remplacer toutes les donnees actuelles par la sauvegarde importee ?"))return;
+      const keepCloud=state.cloud,keepTomb=state.tomb;
       state={...state,...s,id:{...state.id,...(s.id||{})}};
       state.notes=s.notes||[];state.exps=s.exps||[];state.kms=s.kms||[];
-      save();closeModal();render();alert("Sauvegarde importee.");
+      state.cloud=keepCloud;state.tomb=keepTomb;
+      const now=new Date().toISOString();
+      state.notes.forEach(n=>n.updated_at=now);
+      state.exps.forEach(e=>e.updated_at=now);
+      state.kms.forEach(k=>k.updated_at=now);
+      state.id.updated_at=now;
+      save();closeModal();render();syncSoon();alert("Sauvegarde importee.");
     }catch(e){alert("Fichier invalide.");}
   };
   r.readAsText(f);
@@ -619,6 +629,7 @@ function openId(){const i=state.id;
       <span style="color:var(--cyan)">${esc(state.cloud.email||"—")}</span><br>
       ${state.cloud.lastSyncAt?`Dernière synchro : ${new Date(state.cloud.lastSyncAt).toLocaleString("fr-FR")}`:"Jamais synchronisé"}
     </div>
+    ${state.cloud.lastError?`<div class="autherr" style="margin-bottom:8px">Dernière synchro échouée : ${esc(state.cloud.lastError)}</div>`:""}
     <div class="actions" style="margin-top:0">
       <button class="btn ghost" id="btnSync" onclick="syncNow(true)">⟳ Synchroniser</button>
       <button class="btn ghost" onclick="openSetPassword(false)">Mot de passe</button>
@@ -1068,6 +1079,8 @@ async function onSignedIn(session){
   if(firstLoginOnThisDevice&&authState.mode!=="password")openSetPassword(true);
 }
 window.addEventListener("online",()=>{if(state.cloud&&state.cloud.userId)syncNow();});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible")syncSoon();});
+setInterval(()=>syncSoon(),3*60*1000);
 bootApp();
 
 if("serviceWorker" in navigator && location.protocol==="https:"){
