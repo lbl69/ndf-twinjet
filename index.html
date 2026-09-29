@@ -54,6 +54,11 @@
   .strip .amt .e{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:16px}
   .strip .amt .n{font-size:11px;color:var(--muted)}
   .empty{color:var(--muted);font-size:14px;text-align:center;padding:30px 10px;border:1px dashed var(--line);border-radius:var(--r)}
+  .searchwrap{margin-bottom:8px}
+  .filterrow{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px}
+  .filterrow select{flex:1 1 108px;width:auto;font-size:13px;padding:10px 8px}
+  .chipx{flex:none;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:10px;
+    padding:0 14px;cursor:pointer;font-size:15px;line-height:1}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;
     font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;padding:13px 16px;cursor:pointer;width:100%}
@@ -163,9 +168,10 @@
 
 <script>
 /* ===== Constantes ===== */
-const APP_VERSION="2026-09-05b";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
+const APP_VERSION="2026-09-29";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
 const CAP_DEFAULT=21.50;
 const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
+const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const TVA_PRESETS=[20,10,5.5,2.1,0];
 const IK_DEFAULT=0.636;
 /* Devises étrangères : taux vers EUR récupéré auprès de la BCE (Frankfurter). Repli = saisie manuelle. */
@@ -179,6 +185,7 @@ let state={
   notes:[], exps:[], kms:[]
 };
 let view={page:"home",noteId:null};
+let search={q:"",month:"",year:"",cat:""};
 
 const uid=()=>Math.random().toString(36).slice(2,10);
 const eur=n=>(n==null||isNaN(n)?"—":Number(n).toFixed(2).replace(".",",")+" €");
@@ -280,10 +287,68 @@ const app=document.getElementById("app");
 function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
 /* ===== Home ===== */
+const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+function noteYear(n){
+  if(n.type==="mission"){const k=dateKey(n.date);return k?k.slice(0,4):"";}
+  return (n.mois||"").slice(0,4);
+}
+function noteMonth(n){
+  if(n.type==="mission"){const k=dateKey(n.date);return k?k.slice(5,7):"";}
+  return (n.mois||"").slice(5,7);
+}
+function noteSearchText(n){
+  const head=n.titre||(n.type==="mission"?(n.vol||""):(n.libelle||""));
+  const exps=noteExps(n.id),kms=noteKms(n.id);
+  return [head,n.objet,n.categorie,n.equipage,n.date,monthLabel(n.mois),
+    ...exps.map(e=>`${e.fournisseur||""} ${e.libelle||""} ${e.cur&&e.cur!=="EUR"?e.cur:""}`),
+    ...kms.map(k=>`${k.depart||""} ${k.arrivee||""} ${k.marque||""}`)
+  ].join(" ");
+}
+function matchesFilters(n,q){
+  if(search.year&&noteYear(n)!==search.year)return false;
+  if(search.month&&noteMonth(n)!==search.month)return false;
+  if(search.cat&&n.categorie!==search.cat)return false;
+  if(q&&!norm(noteSearchText(n)).includes(q))return false;
+  return true;
+}
+function filtersActive(){return!!(search.q||search.month||search.year||search.cat);}
+function searchBarHTML(){
+  const years=[...new Set(state.notes.map(noteYear).filter(Boolean))].sort((a,b)=>b.localeCompare(a));
+  return `<div class="searchwrap">
+    <input id="q" type="search" placeholder="Rechercher : vol, fournisseur, libellé…" value="${esc(search.q)}" oninput="onSearchInput(this.value)">
+  </div>
+  <div class="filterrow">
+    <select onchange="onFilterChange('month',this.value)">
+      <option value="">Tous les mois</option>
+      ${MONTHS.map((mo,i)=>{const v=String(i+1).padStart(2,"0");return `<option value="${v}" ${search.month===v?'selected':''}>${mo}</option>`;}).join("")}
+    </select>
+    <select onchange="onFilterChange('year',this.value)">
+      <option value="">Toutes années</option>
+      ${years.map(y=>`<option value="${y}" ${search.year===y?'selected':''}>${y}</option>`).join("")}
+    </select>
+    <select onchange="onFilterChange('cat',this.value)">
+      <option value="">Toutes catégories</option>
+      ${CATS.map(c=>`<option ${search.cat===c?'selected':''}>${c}</option>`).join("")}
+    </select>
+    ${filtersActive()?`<button class="chipx" onclick="clearFilters()" title="Effacer les filtres">✕</button>`:""}
+  </div>`;
+}
+function onSearchInput(v){
+  search.q=v;
+  const el=document.getElementById("q");const pos=el?el.selectionStart:null;
+  render();
+  const el2=document.getElementById("q");
+  if(el2){el2.focus();if(pos!=null)el2.setSelectionRange(pos,pos);}
+}
+function onFilterChange(key,v){search[key]=v;render();}
+function clearFilters(){search={q:"",month:"",year:"",cat:""};render();}
 function render(){
   if(view.page==="detail"){renderDetail();return;}
-  const m=state.notes.filter(n=>n.type==="mission").sort((a,b)=>dateKey(b.date).localeCompare(dateKey(a.date)));
-  const l=state.notes.filter(n=>n.type==="ligne").sort((a,b)=>(b.mois||"").localeCompare(a.mois||""));
+  const q=norm(search.q.trim());
+  const filtered=state.notes.filter(n=>matchesFilters(n,q));
+  const m=filtered.filter(n=>n.type==="mission").sort((a,b)=>dateKey(b.date).localeCompare(dateKey(a.date)));
+  const l=filtered.filter(n=>n.type==="ligne").sort((a,b)=>(b.mois||"").localeCompare(a.mois||""));
+  const active=filtersActive();
   app.innerHTML=`
     <header>
       <div><div class="tag">TWIN JET / NOTE DE FRAIS</div><div class="brand">NDF<b>·</b>CARNET</div></div>
@@ -292,10 +357,11 @@ function render(){
         <button class="gear" onclick="openId()">⚙︎</button>
       </div>
     </header>
+    ${searchBarHTML()}
     <h2 class="section">Notes par mission / vol</h2>
-    ${m.length?m.map(stripHTML).join(""):`<div class="empty">Aucune note de mission.<br>Crée une note pour un vol (ex. T7&nbsp;7612).</div>`}
+    ${m.length?m.map(stripHTML).join(""):`<div class="empty">${active?"Aucun résultat pour ces filtres.":"Aucune note de mission.<br>Crée une note pour un vol (ex. T7&nbsp;7612)."}</div>`}
     <h2 class="section">Notes mensuelles · ligne régulière</h2>
-    ${l.length?l.map(stripHTML).join(""):`<div class="empty">Aucune note mensuelle.</div>`}
+    ${l.length?l.map(stripHTML).join(""):`<div class="empty">${active?"Aucun résultat pour ces filtres.":"Aucune note mensuelle."}</div>`}
     <button class="btn amber fab" onclick="openNote()">+ Nouvelle note</button>`;
 }
 function stripHTML(n){
