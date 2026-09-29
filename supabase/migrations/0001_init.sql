@@ -1,14 +1,3 @@
--- NDF Twin Jet — schéma multi-pilotes.
--- Chaque pilote a un compte Supabase Auth ; ses notes de frais ne sont
--- visibles/modifiables que par lui (Row Level Security sur user_id).
---
--- Miroir direct de l'objet `state` de l'app (state.id / state.notes /
--- state.exps / state.kms) : les colonnes reprennent les mêmes noms de champs
--- que dans index.html pour que la synchro reste une simple recopie.
-
--- ============================================================
--- profils (identité + réglages, un par pilote)
--- ============================================================
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text not null,
@@ -29,8 +18,6 @@ create policy "Un pilote gère son propre profil"
   using (id = auth.uid())
   with check (id = auth.uid());
 
--- Création automatique du profil à l'inscription (valeurs par défaut ;
--- le pilote les complète ensuite dans Réglages).
 create function public.handle_new_user()
 returns trigger
 language plpgsql
@@ -48,9 +35,6 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- ============================================================
--- notes (missions / vols ou notes mensuelles « ligne »)
--- ============================================================
 create table public.notes (
   id uuid primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -77,9 +61,6 @@ create policy "Un pilote gère ses propres notes"
 
 create index notes_user_updated_idx on public.notes (user_id, updated_at);
 
--- ============================================================
--- expenses (dépenses rattachées à une note)
--- ============================================================
 create table public.expenses (
   id uuid primary key,
   note_id uuid not null references public.notes(id) on delete cascade,
@@ -113,9 +94,6 @@ create policy "Un pilote gère ses propres dépenses"
 create index expenses_user_updated_idx on public.expenses (user_id, updated_at);
 create index expenses_note_idx on public.expenses (note_id);
 
--- ============================================================
--- kms (indemnités kilométriques rattachées à une note)
--- ============================================================
 create table public.kms (
   id uuid primary key,
   note_id uuid not null references public.notes(id) on delete cascade,

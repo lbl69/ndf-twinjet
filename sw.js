@@ -1,12 +1,3 @@
-/* NDF Twin Jet — service worker
-   - HTML / JS de l'app : RÉSEAU D'ABORD  -> toujours la dernière version quand tu es en ligne,
-     cache utilisé seulement en secours (hors-ligne).
-   - Grosses librairies + icônes : CACHE D'ABORD -> elles ne changent jamais.
-   - Aucune donnée utilisateur ici : tes notes vivent dans localStorage, ce fichier n'y touche pas.
-
-   Pour publier une nouvelle version : pousse simplement index.html sur GitHub.
-   Ne change VERSION que si tu modifies CE fichier ou la liste STATIC_ASSETS.
-*/
 const VERSION = "ndf-v23";
 const STATIC_CACHE  = VERSION + "-static";
 const RUNTIME_CACHE = VERSION + "-runtime";
@@ -41,7 +32,6 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
 
   const url = new URL(req.url);
-  // Requêtes vers un autre domaine (API de taux de change BCE, Supabase) : jamais interceptées ni mises en cache.
   if (url.origin !== location.origin) return;
 
   const isHTML =
@@ -50,7 +40,6 @@ self.addEventListener("fetch", (e) => {
     url.pathname.endsWith("/index.html");
 
   if (isHTML) {
-    // Réseau d'abord, en contournant le cache HTTP de GitHub Pages.
     e.respondWith(
       fetch("./index.html", { cache: "no-store" })
         .then((res) => {
@@ -63,7 +52,6 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Reste : cache d'abord, réseau en secours (et on met en cache au passage).
   e.respondWith(
     caches.match(req).then((hit) => {
       if (hit) return hit;

@@ -4,7 +4,6 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>NDF · Twin Jet</title>
-<!-- 100% hors ligne : aucune dépendance réseau. Polices système en repli. -->
 <meta name="theme-color" content="#0e1116">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="mobile-web-app-capable" content="yes">
@@ -25,7 +24,6 @@
     font-size:16px;line-height:1.45;padding-bottom:env(safe-area-inset-bottom)}
   .mono{font-family:'IBM Plex Mono',monospace}
   .app{max-width:560px;margin:0 auto;padding:16px 14px 120px}
-
   header{display:flex;justify-content:space-between;align-items:flex-end;
     border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:16px}
   .brand{font-size:24px;font-weight:700;letter-spacing:-.4px}
@@ -40,7 +38,6 @@
   .acctbtn:active{filter:brightness(.95)}
   h2.section{font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--muted);
     text-transform:uppercase;margin:22px 2px 10px}
-
   .strip{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
     padding:13px 14px;margin-bottom:10px;cursor:pointer;display:flex;align-items:center;gap:12px;
     transition:border-color .15s,transform .05s}
@@ -63,13 +60,11 @@
   .filterrow select{flex:1 1 108px;width:auto;font-size:13px;padding:10px 8px}
   .chipx{flex:none;background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:10px;
     padding:0 14px;cursor:pointer;font-size:15px;line-height:1}
-
   .authwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
   .authcard{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:26px 22px}
   .authmsg{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:16px}
   .autherr{font-size:12.5px;color:var(--red);background:#2a1416;border:1px solid #4a2226;border-radius:9px;padding:9px 11px;margin-top:10px}
   .authok{font-size:12.5px;color:var(--green);background:#0f2417;border:1px solid #1c3d26;border-radius:9px;padding:9px 11px}
-
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:11px;
     font-family:'IBM Plex Sans',sans-serif;font-weight:600;font-size:15px;padding:13px 16px;cursor:pointer;width:100%}
   .btn.amber{background:var(--amber);color:#1a1306}
@@ -79,7 +74,6 @@
   .btn:active{filter:brightness(.95)}
   .fab{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(18px + env(safe-area-inset-bottom));
     max-width:532px;width:calc(100% - 28px);z-index:40;box-shadow:0 8px 30px rgba(0,0,0,.5)}
-
   .scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:50;display:flex;align-items:flex-end;justify-content:center}
   .sheet{background:var(--panel);width:100%;max-width:560px;border-radius:18px 18px 0 0;border-top:1px solid var(--line);
     max-height:92vh;overflow:auto;padding:8px 16px 24px;animation:rise .18s ease}
@@ -102,7 +96,6 @@
   .warn{font-size:12.5px;color:var(--amber);background:#241c08;border:1px solid #3a2e0c;border-radius:9px;padding:9px 11px;margin-top:10px}
   .actions{display:flex;gap:10px;margin-top:20px}
   .actions .btn{flex:1}
-
   .exp{display:flex;align-items:center;gap:10px;background:var(--panel);border:1px solid var(--line);border-radius:11px;
     padding:11px 12px;margin-bottom:8px;cursor:pointer}
   .exp .d{flex:1;min-width:0}
@@ -121,8 +114,7 @@
   .totbar .v{font-family:'IBM Plex Mono',monospace;font-size:16px;font-weight:600}
   .totbar .v.big{font-size:22px;color:var(--amber)}
   .backbtn{background:none;border:none;color:var(--cyan);font-size:14px;cursor:pointer;padding:4px 0;margin-bottom:6px;font-family:'IBM Plex Mono',monospace}
-
-  /* ---------- PRINT (calque formulaire officiel) ---------- */
+  
   .print-sheet{display:none}
   @media print{
     body{background:#fff}
@@ -178,25 +170,16 @@
 <script src="supabase-js.min.js"></script>
 
 <script>
-/* ===== Constantes ===== */
-const APP_VERSION="2026-09-29";  /* À incrémenter à chaque publication (repère visible dans Réglages). */
+const APP_VERSION="2026-09-29";
 const CAP_DEFAULT=21.50;
 const CATS=["Ligne","Charter","Evasan","MEP","Commercial","Audit","Training/Formation","Administratif"];
 const MONTHS=["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"];
 const TVA_PRESETS=[20,10,5.5,2.1,0];
 const IK_DEFAULT=0.636;
-/* Devises étrangères : taux vers EUR récupéré auprès de la BCE (Frankfurter). Repli = saisie manuelle. */
 const CURRENCIES=["EUR","USD","GBP","CHF","CAD","AUD","JPY","SEK","NOK","DKK","PLN","CZK","HUF","RON","BGN","TRY","ILS","CNY","ZAR","SGD","HKD","INR","THB","NZD","AED","MAD","TND"];
 const FX_HOSTS=["https://api.frankfurter.dev/v1","https://api.frankfurter.app"];
-/* Devises cotées par la BCE (taux auto). Les autres (AED, MAD, TND…) : saisie manuelle du taux. */
 const FX_ECB=new Set("USD GBP CHF CAD AUD JPY SEK NOK DKK PLN CZK HUF RON BGN TRY ILS CNY ZAR SGD HKD INR THB NZD".split(" "));
 
-/* ===== Cloud (multi-pilotes) =====
-   Renseigner ces deux valeurs une fois le projet Supabase créé (voir supabase/migrations/).
-   Elles sont publiques par conception (clé "anon") : l'isolement des données entre pilotes est
-   assuré par les policies RLS côté base, pas par le secret de cette clé.
-   Tant qu'elles ne sont pas renseignées, l'app tourne en local uniquement — comportement
-   identique à avant l'ajout de cette fonctionnalité, aucune régression pour l'usage actuel. */
 const SUPABASE_URL="https://btsnhiwntdbmvsctwkej.supabase.co";
 const SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0c25oaXdudGRibXZzY3R3a2VqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3MDc5NjgsImV4cCI6MjEwNjI4Mzk2OH0.sDXEh_PKjr6Kglw3_6Kp7AAj_06mL3gkBowbFYE-u3M";
 const TWINJET_DOMAIN="twinjet.net";
@@ -221,10 +204,8 @@ const isoToFr=d=>{d=String(d||"");return d.length>=10?`${d.slice(8,10)}/${d.slic
 const todayStr=()=>{const d=new Date();return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${String(d.getFullYear()).slice(-2)}`;};
 const monthNow=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;};
 const monthLabel=m=>{if(!m)return"";const[y,mo]=m.split("-");return new Date(y,mo-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});};
-/* Clé de tri pour une date "JJ/MM/AA" -> "AAAA-MM-JJ" (comparable). Vide si non reconnue. */
 const dateKey=s=>{const m=/^\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*$/.exec(s||"");if(!m)return"";let y=m[3];if(y.length===2)y="20"+y;return y+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");};
 
-/* Taux de change : 1 unité de `cur` = N EUR, à la date donnée (sinon au jour même). Source BCE. */
 async function fetchFxToEUR(cur,dateStr){
   cur=(cur||"EUR").toUpperCase();
   if(cur==="EUR")return{rate:1,date:""};
@@ -245,7 +226,6 @@ async function fetchFxToEUR(cur,dateStr){
   throw lastErr||new Error("indisponible");
 }
 
-/* ===== Stockage : window.storage si dispo (dans Claude), sinon localStorage (hors ligne) ===== */
 const Store={
   async get(){
     try{ if(window.storage){const a=await window.storage.get("ndf_state");return a&&a.value?a.value:null;} }catch(e){}
@@ -266,11 +246,6 @@ async function load(){
 }
 async function save(){try{await Store.set(JSON.stringify(state));}catch(e){console.warn(e);}}
 
-/* ===== Synchro cloud =====
-   Chaque note/dépense/km porte un `updated_at` (ajouté par les fonctions saveXxx). Un sync :
-   1) pousse tout ce qui est plus récent que le dernier sync, 2) applique les suppressions en
-   attente (tombstones), 3) rapatrie ce qui a changé côté serveur depuis (dont les suppressions
-   faites depuis un autre appareil). Dernier `updated_at` gagne en cas de conflit. */
 function tombAdd(kind,ids){if(!ids||!ids.length)return;
   state.tomb=state.tomb||{notes:[],exps:[],kms:[]};
   state.tomb[kind]=[...new Set([...(state.tomb[kind]||[]),...ids])];}
@@ -358,7 +333,6 @@ async function syncNow(manual){
   }
 }
 
-/* ===== Sauvegarde / restauration ===== */
 function exportData(){
   try{
     const blob=new Blob([JSON.stringify(state,null,2)],{type:"application/json"});
@@ -385,7 +359,6 @@ function importData(input){
   r.readAsText(f);
 }
 
-/* ===== Calculs ===== */
 function effTTC(e){const ttc=Number(e.ttc)||0;
   if(e.repas){const cap=(state.id.cap||CAP_DEFAULT)*(Number(e.couverts)||1);return Math.min(ttc,cap);}return ttc;}
 function isCapped(e){return e.repas&&(Number(e.ttc)||0)>(state.id.cap||CAP_DEFAULT)*(Number(e.couverts)||1);}
@@ -395,7 +368,6 @@ function kmTotal(k){return (Number(k.nbkm)||0)*(Number(k.taux)||state.id.ik||IK_
 function totTTC(id){return noteExps(id).reduce((s,e)=>s+effTTC(e),0);}
 function totKM(id){return noteKms(id).reduce((s,k)=>s+kmTotal(k),0);}
 function totGen(id){return totTTC(id)+totKM(id);}
-/* Répartition HT / TVA d'une dépense : soit par taux %, soit par montant de TVA saisi à la main. */
 function expTVAsplit(e){
   const ttc=effTTC(e);
   if(e.tvaManuel){let tv=Number(e.tvaMontant)||0;if(tv<0)tv=0;if(tv>ttc)tv=ttc;return{ht:ttc-tv,tva:tv};}
@@ -405,9 +377,6 @@ function expTVAsplit(e){
 const app=document.getElementById("app");
 function esc(s){return(s==null?"":String(s)).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 
-/* ===== Connexion (multi-pilotes) =====
-   N'est appelé que si `supa` est configuré (voir constantes) — sinon l'app démarre directement
-   en local, comme avant cette fonctionnalité. */
 let authState={mode:"link",email:"",error:"",sending:false};
 function renderAuthScreen(){
   if(authState.mode==="sent"){
@@ -456,10 +425,8 @@ async function doPasswordLogin(){
   const{error}=await supa.auth.signInWithPassword({email,password});
   authState.sending=false;
   if(error){authState.error="Email ou mot de passe incorrect.";renderAuthScreen();return;}
-  /* succès : onAuthStateChange (SIGNED_IN) prend le relais tout seul */
 }
 
-/* ---- Définir / changer le mot de passe (une fois connecté) ---- */
 function openSetPassword(first){
   modal(`<h3>${first?"Définir un mot de passe":"Changer le mot de passe"}</h3>
     ${first?`<div class="authmsg" style="margin-bottom:14px">Optionnel : ça te permet de te reconnecter directement, sans attendre un email à chaque fois. Le lien par email reste toujours disponible si tu préfères.</div>`:""}
@@ -482,7 +449,6 @@ async function submitSetPassword(){
   alert("Mot de passe défini — utilise-le pour te connecter la prochaine fois.");
 }
 
-/* ===== Home ===== */
 const norm=s=>String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 function noteYear(n){
   if(n.type==="mission"){const k=dateKey(n.date);return k?k.slice(0,4):"";}
@@ -572,7 +538,6 @@ function stripHTML(n){
     <div class="amt"><div class="e">${eur(t)}</div><div class="n">${c} ligne${c>1?"s":""}</div></div></div>`;
 }
 
-/* ===== Detail ===== */
 function renderDetail(){
   const n=state.notes.find(x=>x.id===view.noteId);
   if(!n){return goHome();}
@@ -623,7 +588,6 @@ function kmHTML(k){
 function goHome(){view={page:"home",noteId:null};render();}
 function openDetail(id){view={page:"detail",noteId:id};render();}
 
-/* ===== Modales ===== */
 function modal(html){const s=document.createElement("div");s.className="scrim";
   s.onclick=e=>{if(e.target===s)s.remove();};
   s.innerHTML=`<div class="sheet"><div class="grab"></div>${html}</div>`;document.body.appendChild(s);return s;}
@@ -631,7 +595,6 @@ function closeModal(){const s=document.querySelector(".scrim");if(s)s.remove();}
 const val=id=>{const el=document.getElementById(id);return el?el.value.trim():"";};
 const fnum=id=>parseFloat((val(id)||"0").replace(",","."))||0;
 
-/* ---- Identité ---- */
 function openId(){const i=state.id;
   modal(`<h3>Identité & réglages</h3>
     <label class="f">Nom Prénom</label><input id="i_nom" value="${esc(i.nom)}">
@@ -668,10 +631,9 @@ async function forceUpdate(btn){
   try{
     if("serviceWorker" in navigator){
       const reg=await navigator.serviceWorker.getRegistration();
-      if(reg)await reg.update();  /* re-vérifie sw.js ; s'il a changé, le nouveau SW s'active et recharge seul */
+      if(reg)await reg.update();
     }
   }catch(e){}
-  /* HTML/JS en « réseau d'abord » : un simple rechargement récupère la dernière version publiée. */
   setTimeout(()=>location.reload(),400);
 }
 function saveId(){state.id.nom=val("i_nom");state.id.fonction=val("i_fct");state.id.trigramme=val("i_tri");
@@ -684,7 +646,6 @@ async function signOut(){
   try{await supa.auth.signOut();}catch(e){}
 }
 
-/* ---- Note ---- */
 let noteDraftType="mission",catPick="Ligne";
 function openNote(id){
   const n=id?state.notes.find(x=>x.id===id):null;
@@ -730,7 +691,6 @@ function delNote(id){if(!confirm("Supprimer cette note, ses dépenses et ses km 
   state.notes=state.notes.filter(n=>n.id!==id);state.exps=state.exps.filter(e=>e.noteId!==id);
   state.kms=state.kms.filter(k=>k.noteId!==id);save();goHome();syncSoon();}
 
-/* ---- Dépense ---- */
 let expRepas=false,expTva=20,expTvaManuel=false;
 let expCur="EUR",expFx=1,expFxDate="",expFxManual=false;
 function openExp(id){
@@ -835,9 +795,9 @@ function updateWarn(){const w=document.getElementById("e_warn");if(!w)return;
   w.innerHTML="";}
 function saveExp(id){
   const cur=expCur||"EUR";
-  const amt=fnum("e_ttc");                                   /* montant tel qu'écrit sur le ticket */
-  const fx=cur==="EUR"?1:(expFx||0);                          /* 1 unité de `cur` = fx EUR */
-  const ttcEUR=cur==="EUR"?amt:Math.round(amt*fx*100)/100;    /* stocké en EUR : tous les calculs restent en euro */
+  const amt=fnum("e_ttc");
+  const fx=cur==="EUR"?1:(expFx||0);
+  const ttcEUR=cur==="EUR"?amt:Math.round(amt*fx*100)/100;
   const o={noteId:view.noteId,date:val("e_date"),ttc:ttcEUR,fournisseur:val("e_four"),libelle:val("e_lib"),
     repas:expRepas,
     couverts:expRepas?(parseInt(document.getElementById("e_couv").value)||1):1,tiers:fnum("e_tiers"),
@@ -850,7 +810,6 @@ function saveExp(id){
   save();closeModal();render();syncSoon();}
 function delExp(id){tombAdd("exps",[id]);state.exps=state.exps.filter(e=>e.id!==id);save();closeModal();render();syncSoon();}
 
-/* ---- Km ---- */
 function openKm(id){
   const k=id?state.kms.find(x=>x.id===id):null;const n=state.notes.find(x=>x.id===view.noteId);
   modal(`<h3>${k?"Modifier l'indemnité km":"Indemnité kilométrique"}</h3>
@@ -872,7 +831,6 @@ function saveKm(id){
   save();closeModal();render();syncSoon();}
 function delKm(id){tombAdd("kms",[id]);state.kms=state.kms.filter(k=>k.id!==id);save();closeModal();render();syncSoon();}
 
-/* ===== Impression — calque formulaire officiel ===== */
 function buildSheet(id){
   const n=state.notes.find(x=>x.id===id);const i=state.id;
   const list=noteExps(id).sort((a,b)=>dateKey(a.date).localeCompare(dateKey(b.date)));
@@ -881,7 +839,6 @@ function buildSheet(id){
   list.forEach(e=>{const ttc=effTTC(e);const{ht,tva}=expTVAsplit(e);tHT+=ht;tTVA+=tva;tTTC+=ttc;tTiers+=Number(e.tiers)||0;});
   const tKM=kms.reduce((s,k)=>s+kmTotal(k),0);
   const periode=n.type==="mission"?esc(n.date||""):esc(monthLabel(n.mois));
-  /* Original : 24 rangées frais (11..34), 22 rangées km (11..32) + 2 totaux */
   const FR=Math.max(24,list.length,kms.length+2);
   const KR=FR-2;
   let fr="";
@@ -902,7 +859,6 @@ function buildSheet(id){
   const cb=c=>`<span class="cb">${n.categorie===c?"✕":""}</span>`;
   const veh=`${esc((kms[0]&&kms[0].marque)||n.vehMarque||"")}${((kms[0]&&kms[0].cv)||n.vehCV)?" "+esc((kms[0]&&kms[0].cv)||n.vehCV)+" CV":""}`;
   const taux=kms[0]?numIK(kms[0].taux||i.ik):"";
-  /* Champ « Devises et taux de conversion » : lignes distinctes devise / taux / date. */
   const fxSeen=new Set(),fxParts=[];
   list.forEach(e=>{if(e.cur&&e.cur!=="EUR"){const key=e.cur+"|"+(e.fx||0)+"|"+(e.fxDate||"");
     if(!fxSeen.has(key)){fxSeen.add(key);fxParts.push(`1 ${e.cur} = ${numFx(e.fx)} €${e.fxDate?` (${e.fxDate})`:""}`);}}});
@@ -970,16 +926,16 @@ function pdfCSS(){return `
   .bar span{font-size:12px;opacity:.85}
   .page{background:#fff;width:1148px;margin:16px auto;padding:0}
   .tj{display:flex;width:1148px;border:2px solid #000;background:#fff}
-  /* Bande verticale : TWINJET 36pt / PERSONNEL NAVIGANT 26pt, gras italique */
+  
   .spine{width:97px;border-right:2px solid #000;position:relative}
   .rot{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg);white-space:nowrap;display:flex;align-items:baseline;gap:34px}
   .st{font-size:48px;font-weight:bold;font-style:italic;letter-spacing:1px}
   .ss{font-size:35px;font-weight:bold;font-style:italic;letter-spacing:.5px}
   .main{width:1047px}
-  /* R2 : Arial 14 gras italique, centré, AUCUN séparateur vertical */
+  
   .hdr{display:flex;height:29px;border-bottom:2px solid #000;font-size:19px;font-weight:bold;font-style:italic}
   .hdr div{display:flex;align-items:center;justify-content:center;overflow:hidden;white-space:nowrap}
-  /* Catégories : Arial 12 gras, cases = cellules bordées, zone ouverte sans traits */
+  
   .zcats{position:relative;height:63px;border-bottom:2px solid #000}
   .crow{position:absolute;left:0;right:0;height:19px}
   .cg{position:absolute;display:flex;align-items:center;gap:4px;height:19px;font-size:16px}
@@ -988,7 +944,7 @@ function pdfCSS(){return `
   .u8{font-size:11px;font-weight:bold;font-style:italic;text-decoration:underline}
   .eqbox{position:absolute;right:0;top:8px;width:162px;height:46px;border:1px solid #000;padding:2px 5px;font-size:15px;font-weight:bold}
   .eqbox .u8{font-size:15px;font-style:normal}
-  /* R8 : Objet Arial 16 ; petits titres Arial 8 soulignés, haut-gauche */
+  
   .zobj{display:flex;height:37px}
   .ob{width:740px;border-bottom:2px solid #000;border-right:2px solid #000;padding:1px 5px;position:relative;overflow:hidden}
   .olab{font-size:21px;font-weight:bold;font-style:italic;text-decoration:underline}
@@ -998,7 +954,7 @@ function pdfCSS(){return `
   .ve{width:209px;border-bottom:1px solid #000;border-right:1px solid #000;padding:1px 5px}
   .ika{width:98px;border-bottom:1px solid #000;padding:1px 5px}
   .vv{font-size:14px;font-style:italic}
-  /* Corps */
+  
   .zbody{display:flex}
   .fl{width:740px;border-right:2px solid #000}
   .fband{height:24px;background:#FDEADA;border-bottom:2px solid #000;text-align:center;font-weight:bold;font-size:16px;line-height:21px}
@@ -1021,7 +977,7 @@ function pdfCSS(){return `
   .tkm .ktot td.tv,.tkm .ttot td.tv{font-size:14px;font-weight:bold;font-style:italic;text-align:right;padding-right:6px}
   .tkm .ttot td{background:#FDEADA;font-weight:bold;font-size:13px;border-top:2px solid #000}
   .tkm tr:last-child td{border-bottom:none}
-  /* Bas : libellés Arial 8 soulignés haut-gauche ; TOTAL GENERAL 12 / valeur 14 soulignée */
+  
   .zfoot{display:flex;height:55px;border-top:2px solid #000}
   .fc{border-right:2px solid #000;padding:2px 5px}
   .tg{border-right:2px solid #000;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:bold}
@@ -1054,11 +1010,8 @@ function openOrDownload(inner,fname){
   }
 }
 
-
-/* ===== Génération PDF directe (paysage), téléchargement, sans boîte d'impression ===== */
 async function generatePDF(id){
   const built=buildSheet(id); const inner=built.inner, fname=built.fname;
-  // Repli si les librairies ne sont pas présentes (ex. fichier autonome) : ancienne voie impression
   if(!(window.jspdf && window.html2canvas)){ openOrDownload(inner, fname.replace(/\.pdf$/,".html")); return; }
   const ifr=document.createElement("iframe");
   ifr.style.cssText="position:fixed;left:-99999px;top:0;width:1170px;height:1400px;border:0;background:#fff";
@@ -1085,10 +1038,6 @@ async function generatePDF(id){
   }finally{ ifr.remove(); }
 }
 
-/* ===== Démarrage =====
-   Sans Supabase configuré : comportement inchangé (app locale directe). Avec Supabase configuré :
-   session en cache localement par le SDK -> l'app redémarre sans réseau si déjà connecté une fois
-   (usage en vol) ; sinon écran de connexion. */
 async function bootApp(){
   await load();
   if(!supa){render();return;}
@@ -1106,8 +1055,6 @@ async function onSignedIn(session){
   state.cloud.userId=session.user.id;
   state.cloud.email=session.user.email;
   if(firstLoginOnThisDevice){
-    /* Première connexion sur cet appareil : les notes locales existantes (créées avant la
-       connexion, ou héritées de l'ancienne version mono-pilote) partent au premier sync. */
     const now=new Date().toISOString();
     state.notes.forEach(n=>n.updated_at=now);
     state.exps.forEach(e=>e.updated_at=now);
@@ -1118,18 +1065,14 @@ async function onSignedIn(session){
   await save();
   render();
   if(navigator.onLine)syncNow();
-  /* Proposer un mot de passe seulement après une connexion par lien email (pas après une
-     connexion par mot de passe, qui en suppose déjà un). */
   if(firstLoginOnThisDevice&&authState.mode!=="password")openSetPassword(true);
 }
 window.addEventListener("online",()=>{if(state.cloud&&state.cloud.userId)syncNow();});
 bootApp();
 
-/* PWA : service worker pour le hors ligne (uniquement en contexte sécurisé) */
 if("serviceWorker" in navigator && location.protocol==="https:"){
   const swHadController=!!navigator.serviceWorker.controller;
   window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
-  /* Quand une NOUVELLE version prend la main (pas la 1re installation), on recharge une seule fois. */
   let swReloaded=false;
   navigator.serviceWorker.addEventListener("controllerchange",()=>{
     if(swReloaded||!swHadController)return;swReloaded=true;location.reload();
