@@ -307,6 +307,15 @@ function mergeRemote(localArr,rows,mapFn){
     else localArr.push(mapped);
   });
 }
+function mergeProfile(rows){
+  if(!rows||!rows.length)return;
+  const r=rows[0];
+  if((r.updated_at||"")>=(state.id.updated_at||"")){
+    state.id.nom=r.nom||"";state.id.fonction=r.fonction||"";state.id.trigramme=r.trigramme||"";
+    state.id.base=r.base||"";state.id.cap=r.cap||CAP_DEFAULT;state.id.ik=r.ik||IK_DEFAULT;
+    state.id.updated_at=r.updated_at;
+  }
+}
 
 let syncing=false;
 async function syncNow(manual){
@@ -335,16 +344,18 @@ async function syncNow(manual){
     if(tomb.kms.length){const{error}=await supa.from("kms").update({deleted:true,updated_at:nowIso}).in("id",tomb.kms);if(error)throw error;}
     state.tomb={notes:[],exps:[],kms:[]};
 
-    const[rn,re,rk]=await Promise.all([
+    const[rn,re,rk,rp]=await Promise.all([
       supa.from("notes").select("*").gt("updated_at",since),
       supa.from("expenses").select("*").gt("updated_at",since),
-      supa.from("kms").select("*").gt("updated_at",since)
+      supa.from("kms").select("*").gt("updated_at",since),
+      supa.from("profiles").select("*").eq("id",uid).gt("updated_at",since)
     ]);
-    if(rn.error)throw rn.error; if(re.error)throw re.error; if(rk.error)throw rk.error;
+    if(rn.error)throw rn.error; if(re.error)throw re.error; if(rk.error)throw rk.error; if(rp.error)throw rp.error;
 
     mergeRemote(state.notes,rn.data,rowToNote);
     mergeRemote(state.exps,re.data,rowToExp);
     mergeRemote(state.kms,rk.data,rowToKm);
+    mergeProfile(rp.data);
 
     state.cloud.lastSyncAt=startedAt;
     state.cloud.lastError="";
@@ -1081,7 +1092,7 @@ async function bootApp(){
   supa.auth.onAuthStateChange(async(event,session)=>{
     if(event==="SIGNED_IN"&&session){await onSignedIn(session);}
     else if(event==="SIGNED_OUT"){
-      state.cloud={userId:null,email:null,lastSyncAt:null,migrated:false};save();renderAuthScreen();
+      state.cloud={userId:null,email:null,lastSyncAt:null,migrated:false,lastError:""};save();renderAuthScreen();
     }
   });
 }
@@ -1094,7 +1105,7 @@ async function onSignedIn(session){
     state.notes.forEach(n=>n.updated_at=now);
     state.exps.forEach(e=>e.updated_at=now);
     state.kms.forEach(k=>k.updated_at=now);
-    state.id.updated_at=now;
+    if(state.id.nom||state.id.fonction||state.id.trigramme||state.id.base)state.id.updated_at=now;
     state.cloud.migrated=true;
   }
   await save();
